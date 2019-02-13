@@ -297,43 +297,10 @@ pub const NAVX_INTEGRATION_CTL_RESET_YAW: u8 = 0x80;
 
 use byteorder::{ByteOrder, LittleEndian};
 
-#[inline(always)]
-pub fn dec_prot_u16(b: &[u8]) -> u16 {
-    LittleEndian::read_u16(b)
-}
-
-#[inline(always)]
-pub fn enc_prot_u16(val: u16, b: &mut [u8]) {
-    LittleEndian::write_u16(b, val);
-}
-
-#[inline(always)]
-pub fn dec_prot_i16(b: &[u8]) -> i16 {
-    LittleEndian::read_i16(b)
-}
-#[inline(always)]
-pub fn enc_prot_i16(val: i16, b: &mut [u8]) {
-    LittleEndian::write_i16(b, val);
-}
-
-#[inline(always)]
-pub fn dec_prot_u32(b: &[u8]) -> u32 {
-    LittleEndian::read_u32(b)
-}
-
-#[inline(always)]
-pub fn dec_prot_i32(b: &[u8]) -> i32 {
-    LittleEndian::read_i32(b)
-}
-#[inline(always)]
-pub fn enc_prot_i32(val: i32, b: &mut [u8]) {
-    LittleEndian::write_i32(b, val)
-}
-
 /* -327.68 to +327.68 */
 #[inline(always)]
 pub fn dec_prot_signed_hundreths_float(b: &[u8]) -> f32 {
-    let mut signed_angle = dec_prot_i16(b) as f32;
+    let mut signed_angle = LittleEndian::read_i16(b) as f32;
     signed_angle /= 100.;
     return signed_angle;
 }
@@ -341,7 +308,7 @@ pub fn dec_prot_signed_hundreths_float(b: &[u8]) -> f32 {
 #[inline(always)]
 pub fn enc_prot_signed_hundreths_float(input: f32, b: &mut [u8]) {
     let input_as_int = (input * 100.) as i16;
-    enc_prot_i16(input_as_int, b);
+    LittleEndian::write_i16(b, input_as_int);
 }
 
 #[inline(always)]
@@ -365,52 +332,52 @@ pub fn encodeSignedThousandthsFloat(input: f32) -> I16ThousandthsFloat {
 /* 0 to 655.35 */
 #[inline(always)]
 pub fn decodeProtocolUnsignedHundredthsFloat(b: &[u8]) -> f32 {
-    let mut unsigned_float = dec_prot_u16(b) as f32;
+    let mut unsigned_float = LittleEndian::read_u16(b) as f32;
     unsigned_float /= 100.;
     unsigned_float
 }
 #[inline(always)]
 pub fn encodeProtocolUnsignedHundredthsFloat(input: f32, b: &mut [u8]) {
     let input_as_uint = (input * 100.) as u16;
-    enc_prot_u16(input_as_uint, b);
+    LittleEndian::write_u16(b, input_as_uint);
 }
 
 /* -32.768 to +32.768 */
 #[inline(always)]
 pub fn decodeProtocolSignedThousandthsFloat(b: &[u8]) -> f32 {
-    let mut signed_angle = dec_prot_i16(b) as f32;
+    let mut signed_angle = LittleEndian::read_i16(b) as f32;
     signed_angle /= 1000.;
     return signed_angle;
 }
 #[inline(always)]
 pub fn encodeProtocolSignedThousandthsFloat(input: f32, b: &mut [u8]) {
     let input_as_int = (input * 1000.) as i16;
-    enc_prot_i16(input_as_int, b);
+    LittleEndian::write_i16(b, input_as_int);
 }
 
 /* In units of -1 to 1, multiplied by 16384 */
 #[inline(always)]
 pub fn decodeProtocolRatio(b: &[u8]) -> f32 {
-    let mut ratio = dec_prot_i16(b) as f32;
+    let mut ratio = LittleEndian::read_i16(b) as f32;
     ratio /= 32768.;
     return ratio;
 }
 #[inline(always)]
 pub fn encodeProtocolRatio(ratio: f32, b: &mut [u8]) {
-    enc_prot_i16((ratio * 32768.) as i16, b);
+    LittleEndian::write_i16(b, (ratio * 32768.) as i16);
 }
 
 /* <int16>.<uint16> (-32768.9999 to 32767.9999) */
 #[inline(always)]
 pub fn decodeProtocol1616Float(b: &[u8]) -> f32 {
-    let mut result = dec_prot_i32(b) as f32;
+    let mut result = LittleEndian::read_i32(b) as f32;
     result /= 65536.;
     return result;
 }
 #[inline(always)]
 pub fn encodeProtocol1616Float(val: f32, b: &mut [u8]) {
     let packed_float = (val * 65536.) as i32;
-    enc_prot_i32(packed_float, b);
+    LittleEndian::write_i32(b, packed_float);
 }
 
 pub fn buildCRCLookupTable(table: &mut [u8]) {

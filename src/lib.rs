@@ -5,6 +5,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use byteorder::ByteOrder;
+use byteorder::LittleEndian;
 use crossbeam_channel as channel;
 use wpilib::spi;
 
@@ -172,13 +174,13 @@ impl<H: RegisterProtocol> RegisterIO<H> {
                 // these weird casts translate the C++ as written
                 // pls kuailabs do more code reviews or something
                 self.board_state.sensor_status =
-                    registers::dec_prot_u16(&config[NAVX_REG_SENSOR_STATUS_L..]) as i16;
+                    LittleEndian::read_u16(&config[NAVX_REG_SENSOR_STATUS_L..]) as i16;
                 self.board_state.gyro_fsr_dps =
-                    registers::dec_prot_u16(&config[NAVX_REG_GYRO_FSR_DPS_L..]) as i16;
+                    LittleEndian::read_u16(&config[NAVX_REG_GYRO_FSR_DPS_L..]) as i16;
                 self.board_state.accel_fsr_g = config[NAVX_REG_ACCEL_FSR_G] as i16;
                 self.board_state.update_rate_hz = config[NAVX_REG_UPDATE_RATE_HZ];
                 self.board_state.capability_flags =
-                    registers::dec_prot_u16(&config[NAVX_REG_CAPABILITY_FLAGS_L..]) as i16;
+                    LittleEndian::read_u16(&config[NAVX_REG_CAPABILITY_FLAGS_L..]) as i16;
                 self.coordinator.set_board_state(&self.board_state);
                 success = true;
             } else {
@@ -209,8 +211,7 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             .read(first_address as u8, &mut curr_data[..buffer_len as usize])
         {
             let sensor_timestamp: u64 =
-                registers::dec_prot_u32(&curr_data[NAVX_REG_TIMESTAMP_L_L - first_address..])
-                    as u64;
+                LittleEndian::read_u32(&curr_data[NAVX_REG_TIMESTAMP_L_L - first_address..]) as u64;
             if sensor_timestamp == self.last_sensor_timestamp {
                 return;
             }
@@ -260,16 +261,16 @@ impl<H: RegisterProtocol> RegisterIO<H> {
                     &curr_data[NAVX_REG_FUSED_HEADING_L - first_address..],
                 );
             self.ahrspos_update.base.quat_w =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_W_L - first_address..]) as f32
+                LittleEndian::read_i16(&curr_data[NAVX_REG_QUAT_W_L - first_address..]) as f32
                     / 32768.;
             self.ahrspos_update.base.quat_x =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_X_L - first_address..]) as f32
+                LittleEndian::read_i16(&curr_data[NAVX_REG_QUAT_X_L - first_address..]) as f32
                     / 32768.;
             self.ahrspos_update.base.quat_y =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_Y_L - first_address..]) as f32
+                LittleEndian::read_i16(&curr_data[NAVX_REG_QUAT_Y_L - first_address..]) as f32
                     / 32768.;
             self.ahrspos_update.base.quat_z =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_Z_L - first_address..]) as f32
+                LittleEndian::read_i16(&curr_data[NAVX_REG_QUAT_Z_L - first_address..]) as f32
                     / 32768.;
             if displacement_registers {
                 self.ahrspos_update.vel_x = registers::decodeProtocol1616Float(
@@ -318,32 +319,32 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             self.board_state.op_status = curr_data[NAVX_REG_OP_STATUS - first_address];
             self.board_state.selftest_status = curr_data[NAVX_REG_SELFTEST_STATUS - first_address];
             self.board_state.sensor_status =
-                registers::dec_prot_u16(&curr_data[NAVX_REG_SENSOR_STATUS_L - first_address..])
+                LittleEndian::read_u16(&curr_data[NAVX_REG_SENSOR_STATUS_L - first_address..])
                     as i16;
             self.board_state.update_rate_hz = curr_data[NAVX_REG_UPDATE_RATE_HZ - first_address];
             self.board_state.gyro_fsr_dps =
-                registers::dec_prot_u16(&curr_data[NAVX_REG_GYRO_FSR_DPS_L - first_address..])
+                LittleEndian::read_u16(&curr_data[NAVX_REG_GYRO_FSR_DPS_L - first_address..])
                     as i16;
             self.board_state.accel_fsr_g = curr_data[NAVX_REG_ACCEL_FSR_G - first_address] as i16;
             self.board_state.capability_flags =
-                registers::dec_prot_u16(&curr_data[NAVX_REG_CAPABILITY_FLAGS_L - first_address..])
+                LittleEndian::read_u16(&curr_data[NAVX_REG_CAPABILITY_FLAGS_L - first_address..])
                     as i16;
             self.coordinator.set_board_state(&self.board_state);
 
             self.raw_data_update.gyro_x =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_GYRO_X_L - first_address..]);
+                LittleEndian::read_i16(&curr_data[NAVX_REG_GYRO_X_L - first_address..]);
             self.raw_data_update.gyro_y =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_GYRO_Y_L - first_address..]);
+                LittleEndian::read_i16(&curr_data[NAVX_REG_GYRO_Y_L - first_address..]);
             self.raw_data_update.gyro_z =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_GYRO_Z_L - first_address..]);
+                LittleEndian::read_i16(&curr_data[NAVX_REG_GYRO_Z_L - first_address..]);
             self.raw_data_update.accel_x =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_ACC_X_L - first_address..]);
+                LittleEndian::read_i16(&curr_data[NAVX_REG_ACC_X_L - first_address..]);
             self.raw_data_update.accel_y =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_ACC_Y_L - first_address..]);
+                LittleEndian::read_i16(&curr_data[NAVX_REG_ACC_Y_L - first_address..]);
             self.raw_data_update.accel_z =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_ACC_Z_L - first_address..]);
+                LittleEndian::read_i16(&curr_data[NAVX_REG_ACC_Z_L - first_address..]);
             self.raw_data_update.mag_x =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_MAG_X_L - first_address..]);
+                LittleEndian::read_i16(&curr_data[NAVX_REG_MAG_X_L - first_address..]);
             self.raw_data_update.temp_c = self.ahrspos_update.base.mpu_temp;
             self.coordinator
                 .set_raw_data(&self.raw_data_update, sensor_timestamp);
@@ -640,7 +641,7 @@ impl StateCoordinator {
     }
 
     fn set_ypr(&self, ypr_update: &imu::YPRUpdate, sensor_timestamp: u64) {
-        let mut ahrs = self.0.lock();
+        let mut ahrs = self.lock();
         ahrs.yaw = ypr_update.yaw;
         ahrs.pitch = ypr_update.pitch;
         ahrs.roll = ypr_update.roll;
@@ -698,7 +699,7 @@ impl StateCoordinator {
     }
 
     fn set_ahrs_pos(&self, ahrs_update: &ahrs::AHRSPosUpdate, sensor_timestamp: u64) {
-        let mut ahrs = self.0.lock();
+        let mut ahrs = self.lock();
 
         Self::set_ahrs_base(&mut ahrs, &ahrs_update.base);
 
@@ -715,7 +716,7 @@ impl StateCoordinator {
     }
 
     fn set_raw_data(&self, raw_data_update: &imu::GyroUpdate, sensor_timestamp: u64) {
-        let mut ahrs = self.0.lock();
+        let mut ahrs = self.lock();
         ahrs.raw_gyro_x = raw_data_update.gyro_x;
         ahrs.raw_gyro_y = raw_data_update.gyro_y;
         ahrs.raw_gyro_z = raw_data_update.gyro_z;
@@ -731,7 +732,7 @@ impl StateCoordinator {
     }
 
     fn set_ahrs_data(&self, ahrs_update: &ahrs::AHRSUpdate, sensor_timestamp: u64) {
-        let mut ahrs = self.0.lock();
+        let mut ahrs = self.lock();
         Self::set_ahrs_base(&mut ahrs, &ahrs_update.base);
         // Magnetometer Data
         ahrs.cal_mag_x = ahrs_update.cal_mag_x;
@@ -742,7 +743,7 @@ impl StateCoordinator {
     }
 
     fn set_board_id(&self, board_id: &ahrs::BoardID) {
-        let mut ahrs = self.0.lock();
+        let mut ahrs = self.lock();
         ahrs.board_type = board_id.type_;
         ahrs.hw_rev = board_id.hw_rev;
         ahrs.fw_ver_major = board_id.fw_ver_major;
@@ -750,7 +751,7 @@ impl StateCoordinator {
     }
 
     fn set_board_state(&self, board_state: &BoardState) {
-        let mut ahrs = self.0.lock();
+        let mut ahrs = self.lock();
         ahrs.update_rate_hz = board_state.update_rate_hz;
         ahrs.accel_fsr_g = board_state.accel_fsr_g;
         ahrs.gyro_fsr_dps = board_state.gyro_fsr_dps;
@@ -762,22 +763,22 @@ impl StateCoordinator {
     }
 
     fn omni_mount_supported(&self) -> bool {
-        let ahrs = self.0.lock();
+        let ahrs = self.lock();
         ahrs.capability_flags & self::protocol::registers::NAVX_CAPABILITY_FLAG_OMNIMOUNT != 0
     }
 
     fn board_yaw_reset_supported(&self) -> bool {
-        let ahrs = self.0.lock();
+        let ahrs = self.lock();
         ahrs.capability_flags & self::protocol::registers::NAVX_CAPABILITY_FLAG_YAW_RESET != 0
     }
 
     fn displacement_supported(&self) -> bool {
-        let ahrs = self.0.lock();
+        let ahrs = self.lock();
         ahrs.capability_flags & self::protocol::registers::NAVX_CAPABILITY_FLAG_VEL_AND_DISP != 0
     }
 
     fn ahrs_pos_timestamp_supported(&self) -> bool {
-        let ahrs = self.0.lock();
+        let ahrs = self.lock();
         ahrs.capability_flags & self::protocol::registers::NAVX_CAPABILITY_FLAG_AHRSPOS_TS != 0
     }
 }
