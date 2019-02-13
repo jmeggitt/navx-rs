@@ -5,16 +5,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate byteorder;
-extern crate crossbeam_channel as channel;
-#[macro_use]
-extern crate derive_more;
-#[macro_use]
-extern crate shrinkwraprs;
-extern crate parking_lot;
-extern crate wpilib;
-extern crate lazy_static;
-
+use crossbeam_channel as channel;
 use wpilib::spi;
 
 #[cfg(not(feature = "nightly"))]
@@ -474,7 +465,6 @@ use std::mem::size_of_val;
 
 #[cfg(feature = "nightly")]
 static SPI_EX: Mutex<()> = Mutex::new(());
-
 
 #[cfg(not(feature = "nightly"))]
 lazy_static! {

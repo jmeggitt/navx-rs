@@ -5,8 +5,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
 #![allow(non_snake_case)]
+
+use derive_more::{Add, From};
+use shrinkwraprs::*;
+use std::convert::From;
+
 /*******************************************************************/
 /*******************************************************************/
 /*                      Register Definitions                       */
