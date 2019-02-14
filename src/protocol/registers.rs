@@ -299,32 +299,36 @@ use byteorder::{ByteOrder, LittleEndian};
 
 /* -327.68 to +327.68 */
 #[inline(always)]
+#[allow(clippy::cast_lossless)]
 pub fn dec_prot_signed_hundreths_float(b: &[u8]) -> f32 {
-    let mut signed_angle = LittleEndian::read_i16(b) as f32;
-    signed_angle /= 100.;
-    return signed_angle;
+    LittleEndian::read_i16(b) as f32 / 100.
 }
 
 #[inline(always)]
+#[allow(clippy::cast_lossless)]
 pub fn enc_prot_signed_hundreths_float(input: f32, b: &mut [u8]) {
     let input_as_int = (input * 100.) as i16;
     LittleEndian::write_i16(b, input_as_int);
 }
 
 #[inline(always)]
+#[allow(clippy::cast_lossless)]
 pub fn encodeSignedHundredthsFloat(input: f32) -> I16HundrethsFloat {
     I16HundrethsFloat::from((input * 100.) as i16)
 }
 #[inline(always)]
+#[allow(clippy::cast_lossless)]
 pub fn encodeUnsignedHundredthsFloat(input: f32) -> U16HundrethsFloat {
     U16HundrethsFloat::from((input * 100.) as u16)
 }
 
 #[inline(always)]
+#[allow(clippy::cast_lossless)]
 pub fn encodeRatioFloat(input_ratio: f32) -> I16RatioFloat {
     I16RatioFloat::from((input_ratio * 32768.0) as i16)
 }
 #[inline(always)]
+#[allow(clippy::cast_lossless)]
 pub fn encodeSignedThousandthsFloat(input: f32) -> I16ThousandthsFloat {
     I16ThousandthsFloat::from((input * 1000.) as i16)
 }
@@ -332,35 +336,27 @@ pub fn encodeSignedThousandthsFloat(input: f32) -> I16ThousandthsFloat {
 /* 0 to 655.35 */
 #[inline(always)]
 pub fn decodeProtocolUnsignedHundredthsFloat(b: &[u8]) -> f32 {
-    let mut unsigned_float = LittleEndian::read_u16(b) as f32;
-    unsigned_float /= 100.;
-    unsigned_float
+    LittleEndian::read_u16(b) as f32 / 100.
 }
 #[inline(always)]
 pub fn encodeProtocolUnsignedHundredthsFloat(input: f32, b: &mut [u8]) {
-    let input_as_uint = (input * 100.) as u16;
-    LittleEndian::write_u16(b, input_as_uint);
+    LittleEndian::write_u16(b, (input * 100.) as u16);
 }
 
 /* -32.768 to +32.768 */
 #[inline(always)]
 pub fn decodeProtocolSignedThousandthsFloat(b: &[u8]) -> f32 {
-    let mut signed_angle = LittleEndian::read_i16(b) as f32;
-    signed_angle /= 1000.;
-    return signed_angle;
+    LittleEndian::read_i16(b) as f32 / 1000.
 }
 #[inline(always)]
 pub fn encodeProtocolSignedThousandthsFloat(input: f32, b: &mut [u8]) {
-    let input_as_int = (input * 1000.) as i16;
-    LittleEndian::write_i16(b, input_as_int);
+    LittleEndian::write_i16(b, (input * 1000.) as i16);
 }
 
 /* In units of -1 to 1, multiplied by 16384 */
 #[inline(always)]
 pub fn decodeProtocolRatio(b: &[u8]) -> f32 {
-    let mut ratio = LittleEndian::read_i16(b) as f32;
-    ratio /= 32768.;
-    return ratio;
+    LittleEndian::read_i16(b) as f32 / 32768.
 }
 #[inline(always)]
 pub fn encodeProtocolRatio(ratio: f32, b: &mut [u8]) {
@@ -370,21 +366,17 @@ pub fn encodeProtocolRatio(ratio: f32, b: &mut [u8]) {
 /* <int16>.<uint16> (-32768.9999 to 32767.9999) */
 #[inline(always)]
 pub fn decodeProtocol1616Float(b: &[u8]) -> f32 {
-    let mut result = LittleEndian::read_i32(b) as f32;
-    result /= 65536.;
-    return result;
+    LittleEndian::read_i32(b) as f32 / 65536.
 }
 #[inline(always)]
 pub fn encodeProtocol1616Float(val: f32, b: &mut [u8]) {
-    let packed_float = (val * 65536.) as i32;
-    LittleEndian::write_i32(b, packed_float);
+    LittleEndian::write_i32(b, (val * 65536.) as i32);
 }
 
 pub fn buildCRCLookupTable(table: &mut [u8]) {
     let mut crc: u8;
-    let length = table.len();
-    if length == 256 {
-        for i in 0..length {
+    if table.len() == 256 {
+        for (i, val) in table.iter_mut().enumerate() {
             crc = i as u8;
             for _ in 0..8 {
                 if crc & 1 != 0 {
@@ -392,7 +384,7 @@ pub fn buildCRCLookupTable(table: &mut [u8]) {
                 }
                 crc >>= 1;
             }
-            table[i] = crc;
+            *val = crc;
         }
     }
 }

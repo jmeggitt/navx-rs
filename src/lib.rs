@@ -83,16 +83,14 @@ impl AHRS {
             StateCoordinator(u_),
             r,
         );
-        let ahrs = Self {
+        // ahrs.common_init(update_rate_hz)
+        AHRS {
             io: s,
             io_thread: Some(thread::spawn(move || {
                 io.run();
             })),
             coordinator: StateCoordinator(u),
-        };
-
-        // ahrs.common_init(update_rate_hz)
-        ahrs
+        }
     }
 }
 
@@ -189,15 +187,16 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             }
             retry_count += 1;
         }
-        return success;
+        success
     }
 
+    #[allow(clippy::cast_lossless)]
     fn get_current_data(&mut self) {
         use self::registers::*;
         let first_address = NAVX_REG_UPDATE_RATE_HZ as usize;
         let displacement_registers = self.coordinator.displacement_supported();
         let buffer_len: u8;
-        let mut curr_data = [0u8, NAVX_REG_LAST as u8 + 1];
+        let mut curr_data = [0u8; NAVX_REG_LAST + 1];
         /* If firmware supports displacement data, acquire it - otherwise implement */
         /* similar (but potentially less accurate) calculations on this processor.  */
         if displacement_registers {
@@ -210,12 +209,12 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             .io_provider
             .read(first_address as u8, &mut curr_data[..buffer_len as usize])
         {
-            let sensor_timestamp: u64 =
+            let sensor_timestamp =
                 LittleEndian::read_u32(&curr_data[NAVX_REG_TIMESTAMP_L_L - first_address..]) as u64;
             if sensor_timestamp == self.last_sensor_timestamp {
                 return;
             }
-            self.last_sensor_timestamp = sensor_timestamp as u64;
+            self.last_sensor_timestamp = sensor_timestamp;
             self.ahrspos_update.base.op_status = curr_data[NAVX_REG_OP_STATUS - first_address];
             self.ahrspos_update.base.selftest_status =
                 curr_data[NAVX_REG_SELFTEST_STATUS - first_address];
@@ -364,7 +363,7 @@ use wpilib::RobotBase;
 
 impl<'a, H: RegisterProtocol> IOProvider for RegisterIO<H> {
     fn is_connected(&self) -> bool {
-        RobotBase::fpga_time_duration().unwrap_or(Duration::default()) - self.last_update_time
+        RobotBase::fpga_time_duration().unwrap_or_default() - self.last_update_time
             < Self::IO_TIMEOUT
     }
     fn byte_count(&self) -> i32 {
@@ -409,8 +408,7 @@ impl<'a, H: RegisterProtocol> IOProvider for RegisterIO<H> {
         /* IO Loop */
         while !self.stop {
             if self.board_state.update_rate_hz != self.update_rate_hz {
-                let rate = self.update_rate_hz;
-                self.set_update_rate_hz(rate);
+                self.set_update_rate_hz(self.update_rate_hz);
             }
             match self.cmd_chan.try_recv() {
                 Some(IOMessage::ZeroYaw) => self.zero_yaw(),
@@ -474,7 +472,7 @@ lazy_static! {
 
 impl RegisterProtocol for RegisterIOSPI {
     fn init(&mut self) -> bool {
-        self.port.set_clock_rate(self.bitrate as f64);
+        self.port.set_clock_rate(self.bitrate.into());
         self.port.set_msb_first();
         self.port.set_sample_data_on_trailing_edge();
         self.port.set_clock_active_low();
@@ -486,7 +484,7 @@ impl RegisterProtocol for RegisterIOSPI {
                 self.bitrate
             );
         }
-        return true;
+        true
     }
 
     fn write(&mut self, address: u8, value: u8) -> bool {
@@ -503,7 +501,7 @@ impl RegisterProtocol for RegisterIOSPI {
             }
             return false; // WRITE ERROR
         }
-        return true;
+        true
     }
 
     fn read(&mut self, first_address: u8, buf: &mut [u8]) -> bool {
@@ -518,7 +516,7 @@ impl RegisterProtocol for RegisterIOSPI {
         // delay 200 us /* TODO:  What is min. granularity of delay()? */
         // ok fr that comment is from the original source. Why is the actual delay 5x longer than the comment?
         ::std::thread::sleep(::std::time::Duration::from_millis(1));
-        if self.port.read(true, &mut self.rx_buf[..buf.len() + 1]) as usize != buf.len() + 1 {
+        if self.port.read(true, &mut self.rx_buf[..=buf.len()]) as usize != buf.len() + 1 {
             if self.trace {
                 println!("navX-MXP SPI Read error\n");
             }
@@ -534,12 +532,12 @@ impl RegisterProtocol for RegisterIOSPI {
                     crc
                 );
             }
-            return false; // CRC ERROR
+            false // CRC ERROR
         } else {
             let len = buf.len();
             buf.copy_from_slice(&self.rx_buf[..len]);
+            true
         }
-        return true;
     }
 
     // idk man
@@ -679,9 +677,9 @@ impl StateCoordinator {
         // Status/Motion Detection
         ahrs.is_moving =
             ahrs_update.sensor_status & self::protocol::registers::NAVX_SENSOR_STATUS_MOVING != 0;
-        ahrs.is_rotating = !(ahrs_update.sensor_status
+        ahrs.is_rotating = ahrs_update.sensor_status
             & self::protocol::registers::NAVX_SENSOR_STATUS_YAW_STABLE
-            != 0);
+            == 0;
         ahrs.altitude_valid = ahrs_update.sensor_status
             & self::protocol::registers::NAVX_SENSOR_STATUS_ALTITUDE_VALID
             != 0;
