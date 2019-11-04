@@ -119,7 +119,6 @@ pub const NAVX_REG_MAG_X_L: usize = 0x40;
 
 pub const NAVX_REG_PRESSURE_DL: usize = 0x48;
 
-
 /**********************************************/
 /* Calibration Registers                      */
 /**********************************************/
@@ -201,16 +200,15 @@ pub fn dec_prot_i32(b: &[u8]) -> i32 {
 /* -327.68 to +327.68 */
 #[inline(always)]
 pub fn dec_prot_signed_hundreths_float(b: &[u8]) -> f32 {
-    let mut signed_angle = dec_prot_i16(b) as f32;
+    let mut signed_angle = f32::from(dec_prot_i16(b));
     signed_angle /= 100.;
-    return signed_angle;
+    signed_angle
 }
-
 
 /* 0 to 655.35 */
 #[inline(always)]
 pub fn decodeProtocolUnsignedHundredthsFloat(b: &[u8]) -> f32 {
-    let mut unsigned_float = dec_prot_u16(b) as f32;
+    let mut unsigned_float = f32::from(dec_prot_u16(b));
     unsigned_float /= 100.;
     unsigned_float
 }
@@ -218,9 +216,9 @@ pub fn decodeProtocolUnsignedHundredthsFloat(b: &[u8]) -> f32 {
 /* -32.768 to +32.768 */
 #[inline(always)]
 pub fn decodeProtocolSignedThousandthsFloat(b: &[u8]) -> f32 {
-    let mut signed_angle = dec_prot_i16(b) as f32;
+    let mut signed_angle = f32::from(dec_prot_i16(b));
     signed_angle /= 1000.;
-    return signed_angle;
+    signed_angle
 }
 
 /* <int16>.<uint16> (-32768.9999 to 32767.9999) */
@@ -228,7 +226,7 @@ pub fn decodeProtocolSignedThousandthsFloat(b: &[u8]) -> f32 {
 pub fn decodeProtocol1616Float(b: &[u8]) -> f32 {
     let mut result = dec_prot_i32(b) as f32;
     result /= 65536.;
-    return result;
+    result
 }
 
 // TODO: Replace with crc crate

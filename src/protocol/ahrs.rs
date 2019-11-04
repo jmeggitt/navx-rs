@@ -19,7 +19,6 @@
 /* Stream type, in order to enable AHRS Updates.                             */
 /*****************************************************************************/
 
-
 #[derive(Debug, Clone, Default)]
 pub struct AHRSUpdateBase {
     pub yaw: f32,
@@ -44,7 +43,6 @@ pub struct AHRSUpdateBase {
     pub selftest_status: u8,
 }
 
-
 #[derive(Debug, Default, Clone)]
 pub struct AHRSUpdate {
     pub base: AHRSUpdateBase,
@@ -58,7 +56,6 @@ pub struct AHRSUpdate {
     pub raw_mag_z: i16,
 }
 
-
 #[derive(Debug, Default, Clone)]
 pub struct AHRSPosUpdate {
     pub base: AHRSUpdateBase,
@@ -70,13 +67,11 @@ pub struct AHRSPosUpdate {
     pub disp_z: f32,
 }
 
-
 #[derive(Debug, Default, Clone)]
 pub struct AHRSPosTSUpdate {
     pos_upd: AHRSPosUpdate,
     timestamp: u32,
 }
-
 
 #[derive(Debug, Default, Clone)]
 pub struct BoardID {
@@ -88,13 +83,11 @@ pub struct BoardID {
     pub unique_id: [u8; 12],
 }
 
-
 #[derive(Debug, Default, Clone)]
 pub struct IntegrationControl {
     action: u8,
     parameter: i32,
 }
-
 
 #[derive(Debug, Default, Clone)]
 pub struct YPRUpdate {
@@ -103,7 +96,6 @@ pub struct YPRUpdate {
     pub roll: f32,
     pub compass_heading: f32,
 }
-
 
 #[derive(Debug, Default, Clone)]
 pub struct GyroUpdate {

@@ -10,14 +10,13 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-
 #[macro_use]
 extern crate derive_more;
 #[macro_use]
 extern crate shrinkwraprs;
 
-use wpilib::spi;
 use crossbeam_channel as channel;
+use wpilib::spi;
 
 #[cfg(not(feature = "nightly"))]
 use lazy_static::lazy_static;
@@ -91,16 +90,14 @@ impl AHRS {
             StateCoordinator(u_),
             r,
         );
-        let ahrs = Self {
+
+        Self {
             io: s,
             io_thread: Some(thread::spawn(move || {
                 io.run();
             })),
             coordinator: StateCoordinator(u),
-        };
-
-        // ahrs.common_init(update_rate_hz)
-        ahrs
+        }
     }
 }
 
@@ -185,7 +182,7 @@ impl<H: RegisterProtocol> RegisterIO<H> {
                     registers::dec_prot_u16(&config[NAVX_REG_SENSOR_STATUS_L..]) as i16;
                 self.board_state.gyro_fsr_dps =
                     registers::dec_prot_u16(&config[NAVX_REG_GYRO_FSR_DPS_L..]) as i16;
-                self.board_state.accel_fsr_g = config[NAVX_REG_ACCEL_FSR_G] as i16;
+                self.board_state.accel_fsr_g = i16::from(config[NAVX_REG_ACCEL_FSR_G]);
                 self.board_state.update_rate_hz = config[NAVX_REG_UPDATE_RATE_HZ];
                 self.board_state.capability_flags =
                     registers::dec_prot_u16(&config[NAVX_REG_CAPABILITY_FLAGS_L..]) as i16;
@@ -197,7 +194,7 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             }
             retry_count += 1;
         }
-        return success;
+        success
     }
 
     fn get_current_data(&mut self) {
@@ -219,8 +216,8 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             .read(first_address as u8, &mut curr_data[..buffer_len as usize])
         {
             let sensor_timestamp: u64 =
-                registers::dec_prot_u32(&curr_data[NAVX_REG_TIMESTAMP_L_L - first_address..])
-                    as u64;
+                u64::from(registers::dec_prot_u32(&curr_data[NAVX_REG_TIMESTAMP_L_L - first_address..]));
+
             if sensor_timestamp == self.last_sensor_timestamp {
                 return;
             }
@@ -270,16 +267,16 @@ impl<H: RegisterProtocol> RegisterIO<H> {
                     &curr_data[NAVX_REG_FUSED_HEADING_L - first_address..],
                 );
             self.ahrspos_update.base.quat_w =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_W_L - first_address..]) as f32
+                f32::from(registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_W_L - first_address..]))
                     / 32768.;
             self.ahrspos_update.base.quat_x =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_X_L - first_address..]) as f32
+                f32::from(registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_X_L - first_address..]))
                     / 32768.;
             self.ahrspos_update.base.quat_y =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_Y_L - first_address..]) as f32
+                f32::from(registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_Y_L - first_address..]))
                     / 32768.;
             self.ahrspos_update.base.quat_z =
-                registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_Z_L - first_address..]) as f32
+                f32::from(registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_Z_L - first_address..]))
                     / 32768.;
             if displacement_registers {
                 self.ahrspos_update.vel_x = registers::decodeProtocol1616Float(
@@ -334,7 +331,7 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             self.board_state.gyro_fsr_dps =
                 registers::dec_prot_u16(&curr_data[NAVX_REG_GYRO_FSR_DPS_L - first_address..])
                     as i16;
-            self.board_state.accel_fsr_g = curr_data[NAVX_REG_ACCEL_FSR_G - first_address] as i16;
+            self.board_state.accel_fsr_g = i16::from(curr_data[NAVX_REG_ACCEL_FSR_G - first_address]);
             self.board_state.capability_flags =
                 registers::dec_prot_u16(&curr_data[NAVX_REG_CAPABILITY_FLAGS_L - first_address..])
                     as i16;
@@ -360,7 +357,7 @@ impl<H: RegisterProtocol> RegisterIO<H> {
 
             self.last_update_time =
                 RobotBase::fpga_time_duration().unwrap_or(Duration::from_millis(0));
-            self.byte_count += buffer_len as i32;
+            self.byte_count += i32::from(buffer_len);
             self.update_count += 1;
         }
     }
@@ -373,7 +370,7 @@ use wpilib::RobotBase;
 
 impl<'a, H: RegisterProtocol> IOProvider for RegisterIO<H> {
     fn is_connected(&self) -> bool {
-        RobotBase::fpga_time_duration().unwrap_or(Duration::default()) - self.last_update_time
+        RobotBase::fpga_time_duration().unwrap_or_default() - self.last_update_time
             < Self::IO_TIMEOUT
     }
     fn byte_count(&self) -> i32 {
@@ -410,7 +407,7 @@ impl<'a, H: RegisterProtocol> IOProvider for RegisterIO<H> {
         self.set_update_rate_hz(rate);
         self.get_configuration();
 
-        let mut update_rate_ms = 1.0 / self.update_rate_hz as f64;
+        let mut update_rate_ms = 1.0 / f64::from(self.update_rate_hz);
         if update_rate_ms > Self::DELAY_OVERHEAD_MILLISECONDS {
             update_rate_ms -= Self::DELAY_OVERHEAD_MILLISECONDS;
         }
@@ -477,7 +474,6 @@ use std::mem::size_of_val;
 #[cfg(feature = "nightly")]
 static SPI_EX: Mutex<()> = Mutex::new(());
 
-
 #[cfg(not(feature = "nightly"))]
 lazy_static! {
     static ref SPI_EX: Mutex<()> = Mutex::new(());
@@ -485,7 +481,7 @@ lazy_static! {
 
 impl RegisterProtocol for RegisterIOSPI {
     fn init(&mut self) -> bool {
-        self.port.set_clock_rate(self.bitrate as f64);
+        self.port.set_clock_rate(f64::from(self.bitrate));
         self.port.set_msb_first();
         self.port.set_sample_data_on_trailing_edge();
         self.port.set_clock_active_low();
@@ -497,7 +493,7 @@ impl RegisterProtocol for RegisterIOSPI {
                 self.bitrate
             );
         }
-        return true;
+        true
     }
 
     fn write(&mut self, address: u8, value: u8) -> bool {
@@ -514,7 +510,7 @@ impl RegisterProtocol for RegisterIOSPI {
             }
             return false; // WRITE ERROR
         }
-        return true;
+        true
     }
 
     fn read(&mut self, first_address: u8, buf: &mut [u8]) -> bool {
@@ -529,7 +525,7 @@ impl RegisterProtocol for RegisterIOSPI {
         // delay 200 us /* TODO:  What is min. granularity of delay()? */
         // ok fr that comment is from the original source. Why is the actual delay 5x longer than the comment?
         ::std::thread::sleep(::std::time::Duration::from_millis(1));
-        if self.port.read(true, &mut self.rx_buf[..buf.len() + 1]) as usize != buf.len() + 1 {
+        if self.port.read(true, &mut self.rx_buf[..=buf.len()]) as usize != buf.len() + 1 {
             if self.trace {
                 println!("navX-MXP SPI Read error\n");
             }
@@ -550,7 +546,7 @@ impl RegisterProtocol for RegisterIOSPI {
             let len = buf.len();
             buf.copy_from_slice(&self.rx_buf[..len]);
         }
-        return true;
+        true
     }
 
     // idk man
@@ -637,11 +633,11 @@ struct AhrsState {
     pub last_update_time: f64,
 }
 
-use protocol::ahrs::{GyroUpdate, YPRUpdate, BoardID, AHRSUpdate, AHRSPosUpdate, AHRSUpdateBase};
+use protocol::ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
 
+use channel::TryRecvError;
 use parking_lot::MutexGuard;
 use std::sync::Arc;
-use channel::TryRecvError;
 
 #[derive(Debug, Clone)]
 pub struct StateCoordinator(Arc<Mutex<AhrsState>>);
@@ -692,9 +688,9 @@ impl StateCoordinator {
         // Status/Motion Detection
         ahrs.is_moving =
             ahrs_update.sensor_status & self::protocol::registers::NAVX_SENSOR_STATUS_MOVING != 0;
-        ahrs.is_rotating = !(ahrs_update.sensor_status
+        ahrs.is_rotating = ahrs_update.sensor_status
             & self::protocol::registers::NAVX_SENSOR_STATUS_YAW_STABLE
-            != 0);
+            == 0;
         ahrs.altitude_valid = ahrs_update.sensor_status
             & self::protocol::registers::NAVX_SENSOR_STATUS_ALTITUDE_VALID
             != 0;
