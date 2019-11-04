@@ -31,11 +31,10 @@ use wpilib::RobotBase;
 
 #[cfg(not(feature = "nightly"))]
 use lazy_static::lazy_static;
-use protocol::ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
+use ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
 
-use self::protocol::registers;
-
-mod protocol;
+mod registers;
+mod ahrs;
 
 enum IOMessage {
     ZeroYaw,
@@ -47,6 +46,7 @@ pub struct AHRS {
     io_thread: Option<thread::JoinHandle<()>>,
     coordinator: StateCoordinator,
 }
+
 macro_rules! get_function {
     ([$ret:ty] $fnc:ident) => { pub fn $fnc(&self) -> $ret {
             let ahrs = self.coordinator.lock();
@@ -169,7 +169,7 @@ impl<H: RegisterProtocol> RegisterIO<H> {
     }
 
     fn get_configuration(&mut self) -> bool {
-        use self::protocol::registers::*;
+        use registers::*;
         let mut success = false;
         let mut retry_count = 0;
         while retry_count < 3 && !success {
@@ -209,7 +209,7 @@ impl<H: RegisterProtocol> RegisterIO<H> {
     }
 
     fn get_current_data(&mut self) {
-        use self::registers::*;
+        use registers::*;
         let first_address = NAVX_REG_UPDATE_RATE_HZ as usize;
         let displacement_registers = self.coordinator.displacement_supported();
         let buffer_len: u8;
@@ -489,10 +489,7 @@ impl RegisterProtocol for RegisterIOSPI {
         self.port.set_sample_data_on_trailing_edge();
         self.port.set_clock_active_low();
 
-        debug!(
-            "navX-MXP:  Initialized SPI communication at bitrate {}\n",
-            self.bitrate
-        );
+        debug!("navX-MXP: Initialized SPI at bitrate {}\n", self.bitrate);
 
         self.port.set_chip_select_active_low().is_ok()
     }
@@ -670,18 +667,18 @@ impl StateCoordinator {
 
         // Status/Motion Detection
         ahrs.is_moving =
-            ahrs_update.sensor_status & self::protocol::registers::NAVX_SENSOR_STATUS_MOVING != 0;
+            ahrs_update.sensor_status & registers::NAVX_SENSOR_STATUS_MOVING != 0;
         ahrs.is_rotating = ahrs_update.sensor_status
-            & self::protocol::registers::NAVX_SENSOR_STATUS_YAW_STABLE
+            & registers::NAVX_SENSOR_STATUS_YAW_STABLE
             == 0;
         ahrs.altitude_valid = ahrs_update.sensor_status
-            & self::protocol::registers::NAVX_SENSOR_STATUS_ALTITUDE_VALID
+            & registers::NAVX_SENSOR_STATUS_ALTITUDE_VALID
             != 0;
         ahrs.is_magnetometer_calibrated = ahrs_update.cal_status
-            & self::protocol::registers::NAVX_CAL_STATUS_MAG_CAL_COMPLETE
+            & registers::NAVX_CAL_STATUS_MAG_CAL_COMPLETE
             != 0;
         ahrs.magnetic_disturbance = ahrs_update.sensor_status
-            & self::protocol::registers::NAVX_SENSOR_STATUS_MAG_DISTURBANCE
+            & registers::NAVX_SENSOR_STATUS_MAG_DISTURBANCE
             != 0;
 
         ahrs.quaternion_w = ahrs_update.quat_w;
@@ -756,21 +753,21 @@ impl StateCoordinator {
 
     fn omni_mount_supported(&self) -> bool {
         let ahrs = self.0.lock();
-        ahrs.capability_flags & self::protocol::registers::NAVX_CAPABILITY_FLAG_OMNIMOUNT != 0
+        ahrs.capability_flags & registers::NAVX_CAPABILITY_FLAG_OMNIMOUNT != 0
     }
 
     fn board_yaw_reset_supported(&self) -> bool {
         let ahrs = self.0.lock();
-        ahrs.capability_flags & self::protocol::registers::NAVX_CAPABILITY_FLAG_YAW_RESET != 0
+        ahrs.capability_flags & registers::NAVX_CAPABILITY_FLAG_YAW_RESET != 0
     }
 
     fn displacement_supported(&self) -> bool {
         let ahrs = self.0.lock();
-        ahrs.capability_flags & self::protocol::registers::NAVX_CAPABILITY_FLAG_VEL_AND_DISP != 0
+        ahrs.capability_flags & registers::NAVX_CAPABILITY_FLAG_VEL_AND_DISP != 0
     }
 
     fn ahrs_pos_timestamp_supported(&self) -> bool {
         let ahrs = self.0.lock();
-        ahrs.capability_flags & self::protocol::registers::NAVX_CAPABILITY_FLAG_AHRSPOS_TS != 0
+        ahrs.capability_flags & registers::NAVX_CAPABILITY_FLAG_AHRSPOS_TS != 0
     }
 }
