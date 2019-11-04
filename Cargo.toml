@@ -16,7 +16,7 @@ libc = "0.2"
 parking_lot = "0.9"
 shrinkwraprs = "0.2"
 wpilib = "0.4"
-log = "0.4"
+log = {version = "0.4", features = ["max_level_debug", "release_max_level_warn"]}
 
 # TODO:
 # crc

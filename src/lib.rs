@@ -15,14 +15,27 @@ extern crate derive_more;
 #[macro_use]
 extern crate shrinkwraprs;
 
+use std::mem::size_of_val;
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+
+use channel::TryRecvError;
 use crossbeam_channel as channel;
+use log::{debug, error, trace};
+use parking_lot::Mutex;
+use parking_lot::MutexGuard;
 use wpilib::spi;
+use wpilib::spi::Spi;
+use wpilib::RobotBase;
 
 #[cfg(not(feature = "nightly"))]
 use lazy_static::lazy_static;
+use protocol::ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
+
+use self::protocol::registers;
 
 mod protocol;
-use std::thread;
 
 enum IOMessage {
     ZeroYaw,
@@ -79,6 +92,7 @@ impl AHRS {
     //     unimplemented!()
     // }
 }
+
 impl AHRS {
     pub fn from_spi_minutiae(port: spi::Port, spi_bitrate: u32, update_rate_hz: u8) -> Self {
         let u = Arc::new(Mutex::new(AhrsState::default()));
@@ -110,7 +124,6 @@ pub trait IOProvider {
     fn zero_displacement(&mut self);
     fn run(&mut self);
     fn stop(&mut self);
-    fn enable_logging(&mut self, enable: bool);
 }
 
 pub struct RegisterIO<H: RegisterProtocol> {
@@ -129,8 +142,6 @@ pub struct RegisterIO<H: RegisterProtocol> {
     last_sensor_timestamp: u64,
     cmd_chan: channel::Receiver<IOMessage>,
 }
-
-use std::time::Duration;
 
 impl<H: RegisterProtocol> RegisterIO<H> {
     pub(crate) fn new(
@@ -215,8 +226,9 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             .io_provider
             .read(first_address as u8, &mut curr_data[..buffer_len as usize])
         {
-            let sensor_timestamp: u64 =
-                u64::from(registers::dec_prot_u32(&curr_data[NAVX_REG_TIMESTAMP_L_L - first_address..]));
+            let sensor_timestamp: u64 = u64::from(registers::dec_prot_u32(
+                &curr_data[NAVX_REG_TIMESTAMP_L_L - first_address..],
+            ));
 
             if sensor_timestamp == self.last_sensor_timestamp {
                 return;
@@ -266,18 +278,18 @@ impl<H: RegisterProtocol> RegisterIO<H> {
                 registers::decodeProtocolUnsignedHundredthsFloat(
                     &curr_data[NAVX_REG_FUSED_HEADING_L - first_address..],
                 );
-            self.ahrspos_update.base.quat_w =
-                f32::from(registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_W_L - first_address..]))
-                    / 32768.;
-            self.ahrspos_update.base.quat_x =
-                f32::from(registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_X_L - first_address..]))
-                    / 32768.;
-            self.ahrspos_update.base.quat_y =
-                f32::from(registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_Y_L - first_address..]))
-                    / 32768.;
-            self.ahrspos_update.base.quat_z =
-                f32::from(registers::dec_prot_i16(&curr_data[NAVX_REG_QUAT_Z_L - first_address..]))
-                    / 32768.;
+            self.ahrspos_update.base.quat_w = f32::from(registers::dec_prot_i16(
+                &curr_data[NAVX_REG_QUAT_W_L - first_address..],
+            )) / 32768.;
+            self.ahrspos_update.base.quat_x = f32::from(registers::dec_prot_i16(
+                &curr_data[NAVX_REG_QUAT_X_L - first_address..],
+            )) / 32768.;
+            self.ahrspos_update.base.quat_y = f32::from(registers::dec_prot_i16(
+                &curr_data[NAVX_REG_QUAT_Y_L - first_address..],
+            )) / 32768.;
+            self.ahrspos_update.base.quat_z = f32::from(registers::dec_prot_i16(
+                &curr_data[NAVX_REG_QUAT_Z_L - first_address..],
+            )) / 32768.;
             if displacement_registers {
                 self.ahrspos_update.vel_x = registers::decodeProtocol1616Float(
                     &curr_data[NAVX_REG_VEL_X_I_L - first_address..],
@@ -331,7 +343,8 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             self.board_state.gyro_fsr_dps =
                 registers::dec_prot_u16(&curr_data[NAVX_REG_GYRO_FSR_DPS_L - first_address..])
                     as i16;
-            self.board_state.accel_fsr_g = i16::from(curr_data[NAVX_REG_ACCEL_FSR_G - first_address]);
+            self.board_state.accel_fsr_g =
+                i16::from(curr_data[NAVX_REG_ACCEL_FSR_G - first_address]);
             self.board_state.capability_flags =
                 registers::dec_prot_u16(&curr_data[NAVX_REG_CAPABILITY_FLAGS_L - first_address..])
                     as i16;
@@ -365,8 +378,6 @@ impl<H: RegisterProtocol> RegisterIO<H> {
     const IO_TIMEOUT: Duration = Duration::from_millis(1000);
     const DELAY_OVERHEAD_MILLISECONDS: f64 = 4.0;
 }
-
-use wpilib::RobotBase;
 
 impl<'a, H: RegisterProtocol> IOProvider for RegisterIO<H> {
     fn is_connected(&self) -> bool {
@@ -421,7 +432,9 @@ impl<'a, H: RegisterProtocol> IOProvider for RegisterIO<H> {
             match self.cmd_chan.try_recv() {
                 Ok(IOMessage::ZeroYaw) => self.zero_yaw(),
                 Ok(IOMessage::ZeroDisplacement) => self.zero_displacement(),
-                Err(TryRecvError::Disconnected) => panic!("Navx command channel is disconnected!"),
+                Err(TryRecvError::Disconnected) => {
+                    return error!("Navx command channel is disconnected!")
+                }
                 _ => (),
             };
             self.get_current_data();
@@ -434,10 +447,6 @@ impl<'a, H: RegisterProtocol> IOProvider for RegisterIO<H> {
     fn stop(&mut self) {
         self.stop = true;
     }
-
-    fn enable_logging(&mut self, enable: bool) {
-        self.io_provider.enable_logging(enable);
-    }
 }
 
 pub trait RegisterProtocol {
@@ -445,16 +454,14 @@ pub trait RegisterProtocol {
     fn write(&mut self, address: u8, value: u8) -> bool;
     fn read(&mut self, first_address: u8, buf: &mut [u8]) -> bool;
     fn shutdown(&mut self) -> bool;
-    fn enable_logging(&mut self, enable: bool);
 }
 
-use wpilib::spi::Spi;
 const MAX_SPI_MSG_LENGTH: usize = 256;
+
 pub struct RegisterIOSPI {
     port: Spi,
     bitrate: u32,
     rx_buf: [u8; MAX_SPI_MSG_LENGTH],
-    trace: bool,
 }
 
 impl RegisterIOSPI {
@@ -463,13 +470,9 @@ impl RegisterIOSPI {
             port,
             bitrate,
             rx_buf: [0; MAX_SPI_MSG_LENGTH],
-            trace: false,
         }
     }
 }
-
-use self::protocol::registers;
-use std::mem::size_of_val;
 
 #[cfg(feature = "nightly")]
 static SPI_EX: Mutex<()> = Mutex::new(());
@@ -485,15 +488,13 @@ impl RegisterProtocol for RegisterIOSPI {
         self.port.set_msb_first();
         self.port.set_sample_data_on_trailing_edge();
         self.port.set_clock_active_low();
-        //TODO return result
-        self.port.set_chip_select_active_low().unwrap();
-        if self.trace {
-            println!(
-                "navX-MXP:  Initialized SPI communication at bitrate {}\n",
-                self.bitrate
-            );
-        }
-        true
+
+        debug!(
+            "navX-MXP:  Initialized SPI communication at bitrate {}\n",
+            self.bitrate
+        );
+
+        self.port.set_chip_select_active_low().is_ok()
     }
 
     fn write(&mut self, address: u8, value: u8) -> bool {
@@ -504,11 +505,8 @@ impl RegisterProtocol for RegisterIOSPI {
         cmd[1] = value;
         cmd[2] = registers::getCRC(&cmd[..], 2);
         if self.port.write(&cmd[..]) as usize != size_of_val(&cmd) {
-            if self.trace {
-                //TODO: replace with the proper logging crate
-                println!("navX-MXP SPI Write error\n");
-            }
-            return false; // WRITE ERROR
+            trace!("navX-MXP SPI Write error\n");
+            return false;
         }
         true
     }
@@ -526,22 +524,18 @@ impl RegisterProtocol for RegisterIOSPI {
         // ok fr that comment is from the original source. Why is the actual delay 5x longer than the comment?
         ::std::thread::sleep(::std::time::Duration::from_millis(1));
         if self.port.read(true, &mut self.rx_buf[..=buf.len()]) as usize != buf.len() + 1 {
-            if self.trace {
-                println!("navX-MXP SPI Read error\n");
-            }
+            trace!("navX-MXP SPI Read error\n");
             return false; // READ ERROR
         }
         let crc = registers::getCRC(&self.rx_buf[..], buf.len() as u8);
         if crc != self.rx_buf[buf.len()] {
-            if self.trace {
-                println!(
-                    "navX-MXP SPI CRC err.  Length:  {}, Got:  {}; Calculated:  {}\n",
-                    buf.len(),
-                    self.rx_buf[buf.len()],
-                    crc
-                );
-            }
-            return false; // CRC ERROR
+            trace!(
+                "navX-MXP SPI CRC err: Length: {}, Got: {}; Calculated: {}\n",
+                buf.len(),
+                self.rx_buf[buf.len()],
+                crc
+            );
+            return false;
         } else {
             let len = buf.len();
             buf.copy_from_slice(&self.rx_buf[..len]);
@@ -553,14 +547,9 @@ impl RegisterProtocol for RegisterIOSPI {
     fn shutdown(&mut self) -> bool {
         true
     }
-    fn enable_logging(&mut self, enable: bool) {
-        self.trace = enable;
-    }
 }
 
-// ==== Interthread communication stuff ====
-
-use parking_lot::Mutex;
+// ==== Inter-thread communication stuff ====
 
 #[derive(Debug, Clone, Default)]
 struct BoardState {
@@ -632,12 +621,6 @@ struct AhrsState {
     pub last_sensor_timestamp: u64,
     pub last_update_time: f64,
 }
-
-use protocol::ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
-
-use channel::TryRecvError;
-use parking_lot::MutexGuard;
-use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct StateCoordinator(Arc<Mutex<AhrsState>>);
