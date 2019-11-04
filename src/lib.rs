@@ -10,11 +10,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-#[macro_use]
-extern crate derive_more;
-#[macro_use]
-extern crate shrinkwraprs;
-
 use std::mem::size_of_val;
 use std::sync::Arc;
 use std::thread;
@@ -31,8 +26,8 @@ use wpilib::RobotBase;
 
 use ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
 
-mod registers;
 mod ahrs;
+mod registers;
 
 enum IOMessage {
     ZeroYaw,
@@ -97,7 +92,10 @@ impl AHRS {
         let u_ = u.clone();
         let (s, r) = channel::bounded(0);
         let mut io = RegisterIO::new(
-            Mutex::new(RegisterIOSPI::new(wpilib::spi::Spi::new(port).unwrap(), spi_bitrate)),
+            Mutex::new(RegisterIOSPI::new(
+                wpilib::spi::Spi::new(port).unwrap(),
+                spi_bitrate,
+            )),
             update_rate_hz,
             StateCoordinator(u_),
             r,
@@ -659,20 +657,15 @@ impl StateCoordinator {
         ahrs.baro_pressure = ahrs_update.barometric_pressure;
 
         // Status/Motion Detection
-        ahrs.is_moving =
-            ahrs_update.sensor_status & registers::NAVX_SENSOR_STATUS_MOVING != 0;
-        ahrs.is_rotating = ahrs_update.sensor_status
-            & registers::NAVX_SENSOR_STATUS_YAW_STABLE
-            == 0;
-        ahrs.altitude_valid = ahrs_update.sensor_status
-            & registers::NAVX_SENSOR_STATUS_ALTITUDE_VALID
-            != 0;
-        ahrs.is_magnetometer_calibrated = ahrs_update.cal_status
-            & registers::NAVX_CAL_STATUS_MAG_CAL_COMPLETE
-            != 0;
-        ahrs.magnetic_disturbance = ahrs_update.sensor_status
-            & registers::NAVX_SENSOR_STATUS_MAG_DISTURBANCE
-            != 0;
+        ahrs.is_moving = ahrs_update.sensor_status & registers::NAVX_SENSOR_STATUS_MOVING != 0;
+        ahrs.is_rotating =
+            ahrs_update.sensor_status & registers::NAVX_SENSOR_STATUS_YAW_STABLE == 0;
+        ahrs.altitude_valid =
+            ahrs_update.sensor_status & registers::NAVX_SENSOR_STATUS_ALTITUDE_VALID != 0;
+        ahrs.is_magnetometer_calibrated =
+            ahrs_update.cal_status & registers::NAVX_CAL_STATUS_MAG_CAL_COMPLETE != 0;
+        ahrs.magnetic_disturbance =
+            ahrs_update.sensor_status & registers::NAVX_SENSOR_STATUS_MAG_DISTURBANCE != 0;
 
         ahrs.quaternion_w = ahrs_update.quat_w;
         ahrs.quaternion_x = ahrs_update.quat_x;

@@ -22,16 +22,6 @@
 /*        16:16:           -32768.9999 - 32767.9999 (32 bits)      */
 /*        unsigned long:             0 - 4294967295 (32 bits)      */
 /*******************************************************************/
-#[derive(Shrinkwrap, Debug, Eq, PartialEq, From, Add)]
-pub struct I16HundrethsFloat(i16);
-#[derive(Shrinkwrap, Debug, Eq, PartialEq, From, Add)]
-pub struct U16HundrethsFloat(u16);
-#[derive(Shrinkwrap, Debug, Eq, PartialEq, From, Add)]
-pub struct I16ThousandthsFloat(i16);
-#[derive(Shrinkwrap, Debug, Eq, PartialEq, From, Add)]
-pub struct I16RatioFloat(i16);
-#[derive(Shrinkwrap, Debug, Eq, PartialEq, From, Add)]
-pub struct IQ1616(i32);
 
 /**********************************************/
 /* Device Identification Registers            */
