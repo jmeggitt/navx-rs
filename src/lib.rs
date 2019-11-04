@@ -5,6 +5,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// TODO: Deny
+#![allow(unused_must_use)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+
+
 #[macro_use]
 extern crate derive_more;
 #[macro_use]
@@ -16,7 +22,6 @@ use crossbeam_channel as channel;
 #[cfg(not(feature = "nightly"))]
 use lazy_static::lazy_static;
 
-#[allow(dead_code)]
 mod protocol;
 use std::thread;
 
@@ -115,10 +120,10 @@ pub struct RegisterIO<H: RegisterProtocol> {
     io_provider: H,
     update_rate_hz: u8,
     stop: bool,
-    raw_data_update: imu::GyroUpdate,
-    ahrs_update: ahrs::AHRSUpdate,
-    ahrspos_update: ahrs::AHRSPosUpdate,
-    board_id: ahrs::BoardID,
+    raw_data_update: GyroUpdate,
+    ahrs_update: AHRSUpdate,
+    ahrspos_update: AHRSPosUpdate,
+    board_id: BoardID,
     coordinator: StateCoordinator,
     board_state: BoardState,
     last_update_time: Duration,
@@ -632,8 +637,7 @@ struct AhrsState {
     pub last_update_time: f64,
 }
 
-use self::protocol::ahrs;
-use self::protocol::imu;
+use protocol::ahrs::{GyroUpdate, YPRUpdate, BoardID, AHRSUpdate, AHRSPosUpdate, AHRSUpdateBase};
 
 use parking_lot::MutexGuard;
 use std::sync::Arc;
@@ -642,12 +646,14 @@ use channel::TryRecvError;
 #[derive(Debug, Clone)]
 pub struct StateCoordinator(Arc<Mutex<AhrsState>>);
 
+// TODO: Investigate usage
+#[allow(dead_code)]
 impl StateCoordinator {
     fn lock<'ret, 'me: 'ret>(&'me self) -> MutexGuard<'ret, AhrsState> {
         self.0.lock()
     }
 
-    fn set_ypr(&self, ypr_update: &imu::YPRUpdate, sensor_timestamp: u64) {
+    fn set_ypr(&self, ypr_update: &YPRUpdate, sensor_timestamp: u64) {
         let mut ahrs = self.0.lock();
         ahrs.yaw = ypr_update.yaw;
         ahrs.pitch = ypr_update.pitch;
@@ -657,7 +663,7 @@ impl StateCoordinator {
     }
 
     #[inline(always)]
-    fn set_ahrs_base(ahrs: &mut AhrsState, ahrs_update: &ahrs::AHRSUpdateBase) {
+    fn set_ahrs_base(ahrs: &mut AhrsState, ahrs_update: &AHRSUpdateBase) {
         /* Update base IMU class variables */
 
         ahrs.yaw = ahrs_update.yaw;
@@ -705,7 +711,7 @@ impl StateCoordinator {
         ahrs.quaternion_z = ahrs_update.quat_z;
     }
 
-    fn set_ahrs_pos(&self, ahrs_update: &ahrs::AHRSPosUpdate, sensor_timestamp: u64) {
+    fn set_ahrs_pos(&self, ahrs_update: &AHRSPosUpdate, sensor_timestamp: u64) {
         let mut ahrs = self.0.lock();
 
         Self::set_ahrs_base(&mut ahrs, &ahrs_update.base);
@@ -722,7 +728,7 @@ impl StateCoordinator {
         ahrs.last_sensor_timestamp = sensor_timestamp;
     }
 
-    fn set_raw_data(&self, raw_data_update: &imu::GyroUpdate, sensor_timestamp: u64) {
+    fn set_raw_data(&self, raw_data_update: &GyroUpdate, sensor_timestamp: u64) {
         let mut ahrs = self.0.lock();
         ahrs.raw_gyro_x = raw_data_update.gyro_x;
         ahrs.raw_gyro_y = raw_data_update.gyro_y;
@@ -738,7 +744,7 @@ impl StateCoordinator {
         ahrs.last_sensor_timestamp = sensor_timestamp;
     }
 
-    fn set_ahrs_data(&self, ahrs_update: &ahrs::AHRSUpdate, sensor_timestamp: u64) {
+    fn set_ahrs_data(&self, ahrs_update: &AHRSUpdate, sensor_timestamp: u64) {
         let mut ahrs = self.0.lock();
         Self::set_ahrs_base(&mut ahrs, &ahrs_update.base);
         // Magnetometer Data
@@ -749,7 +755,7 @@ impl StateCoordinator {
         ahrs.last_sensor_timestamp = sensor_timestamp;
     }
 
-    fn set_board_id(&self, board_id: &ahrs::BoardID) {
+    fn set_board_id(&self, board_id: &BoardID) {
         let mut ahrs = self.0.lock();
         ahrs.board_type = board_id.type_;
         ahrs.hw_rev = board_id.hw_rev;

@@ -6,5 +6,4 @@
 // except according to those terms.
 
 pub mod ahrs;
-pub mod imu;
 pub mod registers;
