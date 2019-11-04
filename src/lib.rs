@@ -29,8 +29,6 @@ use wpilib::spi;
 use wpilib::spi::Spi;
 use wpilib::RobotBase;
 
-#[cfg(not(feature = "nightly"))]
-use lazy_static::lazy_static;
 use ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
 
 mod registers;
@@ -99,7 +97,7 @@ impl AHRS {
         let u_ = u.clone();
         let (s, r) = channel::bounded(0);
         let mut io = RegisterIO::new(
-            RegisterIOSPI::new(wpilib::spi::Spi::new(port).unwrap(), spi_bitrate),
+            Mutex::new(RegisterIOSPI::new(wpilib::spi::Spi::new(port).unwrap(), spi_bitrate)),
             update_rate_hz,
             StateCoordinator(u_),
             r,
@@ -474,34 +472,28 @@ impl RegisterIOSPI {
     }
 }
 
-#[cfg(feature = "nightly")]
-static SPI_EX: Mutex<()> = Mutex::new(());
-
-#[cfg(not(feature = "nightly"))]
-lazy_static! {
-    static ref SPI_EX: Mutex<()> = Mutex::new(());
-}
-
-impl RegisterProtocol for RegisterIOSPI {
+impl RegisterProtocol for Mutex<RegisterIOSPI> {
     fn init(&mut self) -> bool {
-        self.port.set_clock_rate(f64::from(self.bitrate));
-        self.port.set_msb_first();
-        self.port.set_sample_data_on_trailing_edge();
-        self.port.set_clock_active_low();
+        let mut spi = self.lock();
+        let bitrate = spi.bitrate;
+        let port = &mut spi.port;
+        port.set_clock_rate(f64::from(bitrate));
+        port.set_msb_first();
+        port.set_sample_data_on_trailing_edge();
+        port.set_clock_active_low();
 
-        debug!("navX-MXP: Initialized SPI at bitrate {}\n", self.bitrate);
+        debug!("navX-MXP: Initialized SPI at bitrate {}\n", bitrate);
 
-        self.port.set_chip_select_active_low().is_ok()
+        port.set_chip_select_active_low().is_ok()
     }
 
     fn write(&mut self, address: u8, value: u8) -> bool {
-        let _lock = SPI_EX.lock();
         let mut cmd = [0u8; 3];
         // srsly where the f does this come from
         cmd[0] = address | 0x80;
         cmd[1] = value;
         cmd[2] = registers::getCRC(&cmd[..], 2);
-        if self.port.write(&cmd[..]) as usize != size_of_val(&cmd) {
+        if self.lock().port.write(&cmd[..]) as usize != size_of_val(&cmd) {
             trace!("navX-MXP SPI Write error\n");
             return false;
         }
@@ -509,33 +501,34 @@ impl RegisterProtocol for RegisterIOSPI {
     }
 
     fn read(&mut self, first_address: u8, buf: &mut [u8]) -> bool {
-        let _lock = SPI_EX.lock();
+        let spi = &mut *self.lock();
+
         let mut cmd = [0u8; 3];
         cmd[0] = first_address;
         cmd[1] = buf.len() as u8;
         cmd[2] = registers::getCRC(&cmd[..], 2);
-        if self.port.write(&cmd[..]) as usize != size_of_val(&cmd) {
+        if spi.port.write(&cmd[..]) as usize != size_of_val(&cmd) {
             return false; // WRITE ERROR
         }
         // delay 200 us /* TODO:  What is min. granularity of delay()? */
         // ok fr that comment is from the original source. Why is the actual delay 5x longer than the comment?
         ::std::thread::sleep(::std::time::Duration::from_millis(1));
-        if self.port.read(true, &mut self.rx_buf[..=buf.len()]) as usize != buf.len() + 1 {
+        if spi.port.read(true, &mut spi.rx_buf[..=buf.len()]) as usize != buf.len() + 1 {
             trace!("navX-MXP SPI Read error\n");
             return false; // READ ERROR
         }
-        let crc = registers::getCRC(&self.rx_buf[..], buf.len() as u8);
-        if crc != self.rx_buf[buf.len()] {
+        let crc = registers::getCRC(&spi.rx_buf[..], buf.len() as u8);
+        if crc != spi.rx_buf[buf.len()] {
             trace!(
                 "navX-MXP SPI CRC err: Length: {}, Got: {}; Calculated: {}\n",
                 buf.len(),
-                self.rx_buf[buf.len()],
+                spi.rx_buf[buf.len()],
                 crc
             );
             return false;
         } else {
             let len = buf.len();
-            buf.copy_from_slice(&self.rx_buf[..len]);
+            buf.copy_from_slice(&spi.rx_buf[..len]);
         }
         true
     }
