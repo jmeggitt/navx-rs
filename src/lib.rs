@@ -17,6 +17,7 @@ extern crate lazy_static;
 
 use wpilib::spi;
 
+
 #[cfg(not(feature = "nightly"))]
 use lazy_static::lazy_static;
 
@@ -421,8 +422,9 @@ impl<'a, H: RegisterProtocol> IOProvider for RegisterIO<H> {
                 self.set_update_rate_hz(rate);
             }
             match self.cmd_chan.try_recv() {
-                Some(IOMessage::ZeroYaw) => self.zero_yaw(),
-                Some(IOMessage::ZeroDisplacement) => self.zero_displacement(),
+                Ok(IOMessage::ZeroYaw) => self.zero_yaw(),
+                Ok(IOMessage::ZeroDisplacement) => self.zero_displacement(),
+                Err(e) =>
                 _ => (),
             };
             self.get_current_data();
