@@ -5,18 +5,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate byteorder;
-extern crate crossbeam_channel as channel;
 #[macro_use]
 extern crate derive_more;
 #[macro_use]
 extern crate shrinkwraprs;
-extern crate parking_lot;
-extern crate wpilib;
-extern crate lazy_static;
 
 use wpilib::spi;
-
+use crossbeam_channel as channel;
 
 #[cfg(not(feature = "nightly"))]
 use lazy_static::lazy_static;
@@ -424,7 +419,7 @@ impl<'a, H: RegisterProtocol> IOProvider for RegisterIO<H> {
             match self.cmd_chan.try_recv() {
                 Ok(IOMessage::ZeroYaw) => self.zero_yaw(),
                 Ok(IOMessage::ZeroDisplacement) => self.zero_displacement(),
-                Err(e) =>
+                Err(TryRecvError::Disconnected) => panic!("Navx command channel is disconnected!"),
                 _ => (),
             };
             self.get_current_data();
@@ -642,6 +637,7 @@ use self::protocol::imu;
 
 use parking_lot::MutexGuard;
 use std::sync::Arc;
+use channel::TryRecvError;
 
 #[derive(Debug, Clone)]
 pub struct StateCoordinator(Arc<Mutex<AhrsState>>);
