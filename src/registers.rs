@@ -197,7 +197,7 @@ pub fn dec_prot_signed_hundreths_float(b: &[u8]) -> f32 {
 
 /* 0 to 655.35 */
 #[inline(always)]
-pub fn decodeProtocolUnsignedHundredthsFloat(b: &[u8]) -> f32 {
+pub fn dec_unsigned_hundredths_float(b: &[u8]) -> f32 {
     let mut unsigned_float = f32::from(dec_prot_u16(b));
     unsigned_float /= 100.;
     unsigned_float
@@ -205,7 +205,7 @@ pub fn decodeProtocolUnsignedHundredthsFloat(b: &[u8]) -> f32 {
 
 /* -32.768 to +32.768 */
 #[inline(always)]
-pub fn decodeProtocolSignedThousandthsFloat(b: &[u8]) -> f32 {
+pub fn dec_signed_thousandths_float(b: &[u8]) -> f32 {
     let mut signed_angle = f32::from(dec_prot_i16(b));
     signed_angle /= 1000.;
     signed_angle
@@ -213,14 +213,14 @@ pub fn decodeProtocolSignedThousandthsFloat(b: &[u8]) -> f32 {
 
 /* <int16>.<uint16> (-32768.9999 to 32767.9999) */
 #[inline(always)]
-pub fn decodeProtocol1616Float(b: &[u8]) -> f32 {
+pub fn dec_1616_float(b: &[u8]) -> f32 {
     let mut result = dec_prot_i32(b) as f32;
     result /= 65536.;
     result
 }
 
 // TODO: Replace with crc crate
-pub fn getCRC(message: &[u8], length: u8) -> u8 {
+pub fn get_crc(message: &[u8], length: u8) -> u8 {
     let mut crc = 0;
 
     for i in 0..length {

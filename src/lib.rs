@@ -5,11 +5,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// TODO: Deny
-#![allow(unused_must_use)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-
 use std::mem::size_of_val;
 use std::sync::Arc;
 use std::thread;
@@ -61,7 +56,7 @@ impl AHRS {
 
     pub fn zero_yaw(&mut self) {
         if self.coordinator.board_yaw_reset_supported() {
-            self.io.send(IOMessage::ZeroYaw);
+            self.io.send(IOMessage::ZeroYaw).unwrap()
         } else {
             unimplemented!("Currently, only gyros with on-board yaw-reset are supported")
         }
@@ -69,7 +64,7 @@ impl AHRS {
 
     pub fn zero_displacement(&mut self) {
         if self.coordinator.displacement_supported() {
-            self.io.send(IOMessage::ZeroDisplacement);
+            self.io.send(IOMessage::ZeroDisplacement).unwrap()
         } else {
             unimplemented!("The current board does not support displacement! (Also, these boards can't do it very well)")
         }
@@ -246,32 +241,32 @@ impl<H: RegisterProtocol> RegisterIO<H> {
                 &curr_data[NAVX_REG_ROLL_L - first_address..],
             );
             self.ahrspos_update.base.compass_heading =
-                registers::decodeProtocolUnsignedHundredthsFloat(
+                registers::dec_unsigned_hundredths_float(
                     &curr_data[NAVX_REG_HEADING_L - first_address..],
                 );
             self.ahrspos_update.base.mpu_temp = registers::dec_prot_signed_hundreths_float(
                 &curr_data[NAVX_REG_MPU_TEMP_C_L - first_address..],
             );
             self.ahrspos_update.base.linear_accel_x =
-                registers::decodeProtocolSignedThousandthsFloat(
+                registers::dec_signed_thousandths_float(
                     &curr_data[NAVX_REG_LINEAR_ACC_X_L - first_address..],
                 );
             self.ahrspos_update.base.linear_accel_y =
-                registers::decodeProtocolSignedThousandthsFloat(
+                registers::dec_signed_thousandths_float(
                     &curr_data[NAVX_REG_LINEAR_ACC_Y_L - first_address..],
                 );
             self.ahrspos_update.base.linear_accel_z =
-                registers::decodeProtocolSignedThousandthsFloat(
+                registers::dec_signed_thousandths_float(
                     &curr_data[NAVX_REG_LINEAR_ACC_Z_L - first_address..],
                 );
-            self.ahrspos_update.base.altitude = registers::decodeProtocol1616Float(
+            self.ahrspos_update.base.altitude = registers::dec_1616_float(
                 &curr_data[NAVX_REG_ALTITUDE_D_L - first_address..],
             );
-            self.ahrspos_update.base.barometric_pressure = registers::decodeProtocol1616Float(
+            self.ahrspos_update.base.barometric_pressure = registers::dec_1616_float(
                 &curr_data[NAVX_REG_PRESSURE_DL - first_address..],
             );
             self.ahrspos_update.base.fused_heading =
-                registers::decodeProtocolUnsignedHundredthsFloat(
+                registers::dec_unsigned_hundredths_float(
                     &curr_data[NAVX_REG_FUSED_HEADING_L - first_address..],
                 );
             self.ahrspos_update.base.quat_w = f32::from(registers::dec_prot_i16(
@@ -287,22 +282,22 @@ impl<H: RegisterProtocol> RegisterIO<H> {
                 &curr_data[NAVX_REG_QUAT_Z_L - first_address..],
             )) / 32768.;
             if displacement_registers {
-                self.ahrspos_update.vel_x = registers::decodeProtocol1616Float(
+                self.ahrspos_update.vel_x = registers::dec_1616_float(
                     &curr_data[NAVX_REG_VEL_X_I_L - first_address..],
                 );
-                self.ahrspos_update.vel_y = registers::decodeProtocol1616Float(
+                self.ahrspos_update.vel_y = registers::dec_1616_float(
                     &curr_data[NAVX_REG_VEL_Y_I_L - first_address..],
                 );
-                self.ahrspos_update.vel_z = registers::decodeProtocol1616Float(
+                self.ahrspos_update.vel_z = registers::dec_1616_float(
                     &curr_data[NAVX_REG_VEL_Z_I_L - first_address..],
                 );
-                self.ahrspos_update.disp_x = registers::decodeProtocol1616Float(
+                self.ahrspos_update.disp_x = registers::dec_1616_float(
                     &curr_data[NAVX_REG_DISP_X_I_L - first_address..],
                 );
-                self.ahrspos_update.disp_y = registers::decodeProtocol1616Float(
+                self.ahrspos_update.disp_y = registers::dec_1616_float(
                     &curr_data[NAVX_REG_DISP_Y_I_L - first_address..],
                 );
-                self.ahrspos_update.disp_z = registers::decodeProtocol1616Float(
+                self.ahrspos_update.disp_z = registers::dec_1616_float(
                     &curr_data[NAVX_REG_DISP_Z_I_L - first_address..],
                 );
                 self.coordinator
@@ -490,7 +485,7 @@ impl RegisterProtocol for Mutex<RegisterIOSPI> {
         // srsly where the f does this come from
         cmd[0] = address | 0x80;
         cmd[1] = value;
-        cmd[2] = registers::getCRC(&cmd[..], 2);
+        cmd[2] = registers::get_crc(&cmd[..], 2);
         if self.lock().port.write(&cmd[..]) as usize != size_of_val(&cmd) {
             trace!("navX-MXP SPI Write error\n");
             return false;
@@ -504,7 +499,7 @@ impl RegisterProtocol for Mutex<RegisterIOSPI> {
         let mut cmd = [0u8; 3];
         cmd[0] = first_address;
         cmd[1] = buf.len() as u8;
-        cmd[2] = registers::getCRC(&cmd[..], 2);
+        cmd[2] = registers::get_crc(&cmd[..], 2);
         if spi.port.write(&cmd[..]) as usize != size_of_val(&cmd) {
             return false; // WRITE ERROR
         }
@@ -515,7 +510,7 @@ impl RegisterProtocol for Mutex<RegisterIOSPI> {
             trace!("navX-MXP SPI Read error\n");
             return false; // READ ERROR
         }
-        let crc = registers::getCRC(&spi.rx_buf[..], buf.len() as u8);
+        let crc = registers::get_crc(&spi.rx_buf[..], buf.len() as u8);
         if crc != spi.rx_buf[buf.len()] {
             trace!(
                 "navX-MXP SPI CRC err: Length: {}, Got: {}; Calculated: {}\n",
