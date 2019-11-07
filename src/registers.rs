@@ -219,7 +219,10 @@ pub fn dec_1616_float(b: &[u8]) -> f32 {
     result
 }
 
-// TODO: Replace with crc crate
+const CRC7_POLY: u8 = 0x91;
+
+/// I was unable to get the same results with any crc library. The navx chip may not use a standard
+/// crc7 implementation.
 pub fn get_crc(message: &[u8], length: u8) -> u8 {
     let mut crc = 0;
 
@@ -234,5 +237,3 @@ pub fn get_crc(message: &[u8], length: u8) -> u8 {
     }
     crc
 }
-
-pub const CRC7_POLY: u8 = 0x91;

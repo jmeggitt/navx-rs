@@ -4,6 +4,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#[macro_use]
+extern crate bitflags;
 
 use std::mem::size_of_val;
 use std::sync::Arc;
@@ -21,8 +23,11 @@ use wpilib::RobotBase;
 
 use ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
 
+mod address;
 mod ahrs;
 mod registers;
+mod spia;
+mod types;
 
 enum IOMessage {
     ZeroYaw,
@@ -240,35 +245,28 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             self.ahrspos_update.base.roll = registers::dec_prot_signed_hundreths_float(
                 &curr_data[NAVX_REG_ROLL_L - first_address..],
             );
-            self.ahrspos_update.base.compass_heading =
-                registers::dec_unsigned_hundredths_float(
-                    &curr_data[NAVX_REG_HEADING_L - first_address..],
-                );
+            self.ahrspos_update.base.compass_heading = registers::dec_unsigned_hundredths_float(
+                &curr_data[NAVX_REG_HEADING_L - first_address..],
+            );
             self.ahrspos_update.base.mpu_temp = registers::dec_prot_signed_hundreths_float(
                 &curr_data[NAVX_REG_MPU_TEMP_C_L - first_address..],
             );
-            self.ahrspos_update.base.linear_accel_x =
-                registers::dec_signed_thousandths_float(
-                    &curr_data[NAVX_REG_LINEAR_ACC_X_L - first_address..],
-                );
-            self.ahrspos_update.base.linear_accel_y =
-                registers::dec_signed_thousandths_float(
-                    &curr_data[NAVX_REG_LINEAR_ACC_Y_L - first_address..],
-                );
-            self.ahrspos_update.base.linear_accel_z =
-                registers::dec_signed_thousandths_float(
-                    &curr_data[NAVX_REG_LINEAR_ACC_Z_L - first_address..],
-                );
-            self.ahrspos_update.base.altitude = registers::dec_1616_float(
-                &curr_data[NAVX_REG_ALTITUDE_D_L - first_address..],
+            self.ahrspos_update.base.linear_accel_x = registers::dec_signed_thousandths_float(
+                &curr_data[NAVX_REG_LINEAR_ACC_X_L - first_address..],
             );
-            self.ahrspos_update.base.barometric_pressure = registers::dec_1616_float(
-                &curr_data[NAVX_REG_PRESSURE_DL - first_address..],
+            self.ahrspos_update.base.linear_accel_y = registers::dec_signed_thousandths_float(
+                &curr_data[NAVX_REG_LINEAR_ACC_Y_L - first_address..],
             );
-            self.ahrspos_update.base.fused_heading =
-                registers::dec_unsigned_hundredths_float(
-                    &curr_data[NAVX_REG_FUSED_HEADING_L - first_address..],
-                );
+            self.ahrspos_update.base.linear_accel_z = registers::dec_signed_thousandths_float(
+                &curr_data[NAVX_REG_LINEAR_ACC_Z_L - first_address..],
+            );
+            self.ahrspos_update.base.altitude =
+                registers::dec_1616_float(&curr_data[NAVX_REG_ALTITUDE_D_L - first_address..]);
+            self.ahrspos_update.base.barometric_pressure =
+                registers::dec_1616_float(&curr_data[NAVX_REG_PRESSURE_DL - first_address..]);
+            self.ahrspos_update.base.fused_heading = registers::dec_unsigned_hundredths_float(
+                &curr_data[NAVX_REG_FUSED_HEADING_L - first_address..],
+            );
             self.ahrspos_update.base.quat_w = f32::from(registers::dec_prot_i16(
                 &curr_data[NAVX_REG_QUAT_W_L - first_address..],
             )) / 32768.;
@@ -282,24 +280,18 @@ impl<H: RegisterProtocol> RegisterIO<H> {
                 &curr_data[NAVX_REG_QUAT_Z_L - first_address..],
             )) / 32768.;
             if displacement_registers {
-                self.ahrspos_update.vel_x = registers::dec_1616_float(
-                    &curr_data[NAVX_REG_VEL_X_I_L - first_address..],
-                );
-                self.ahrspos_update.vel_y = registers::dec_1616_float(
-                    &curr_data[NAVX_REG_VEL_Y_I_L - first_address..],
-                );
-                self.ahrspos_update.vel_z = registers::dec_1616_float(
-                    &curr_data[NAVX_REG_VEL_Z_I_L - first_address..],
-                );
-                self.ahrspos_update.disp_x = registers::dec_1616_float(
-                    &curr_data[NAVX_REG_DISP_X_I_L - first_address..],
-                );
-                self.ahrspos_update.disp_y = registers::dec_1616_float(
-                    &curr_data[NAVX_REG_DISP_Y_I_L - first_address..],
-                );
-                self.ahrspos_update.disp_z = registers::dec_1616_float(
-                    &curr_data[NAVX_REG_DISP_Z_I_L - first_address..],
-                );
+                self.ahrspos_update.vel_x =
+                    registers::dec_1616_float(&curr_data[NAVX_REG_VEL_X_I_L - first_address..]);
+                self.ahrspos_update.vel_y =
+                    registers::dec_1616_float(&curr_data[NAVX_REG_VEL_Y_I_L - first_address..]);
+                self.ahrspos_update.vel_z =
+                    registers::dec_1616_float(&curr_data[NAVX_REG_VEL_Z_I_L - first_address..]);
+                self.ahrspos_update.disp_x =
+                    registers::dec_1616_float(&curr_data[NAVX_REG_DISP_X_I_L - first_address..]);
+                self.ahrspos_update.disp_y =
+                    registers::dec_1616_float(&curr_data[NAVX_REG_DISP_Y_I_L - first_address..]);
+                self.ahrspos_update.disp_z =
+                    registers::dec_1616_float(&curr_data[NAVX_REG_DISP_Z_I_L - first_address..]);
                 self.coordinator
                     .set_ahrs_pos(&self.ahrspos_update, sensor_timestamp);
             } else {
@@ -482,7 +474,7 @@ impl RegisterProtocol for Mutex<RegisterIOSPI> {
 
     fn write(&mut self, address: u8, value: u8) -> bool {
         let mut cmd = [0u8; 3];
-        // srsly where the f does this come from
+
         cmd[0] = address | 0x80;
         cmd[1] = value;
         cmd[2] = registers::get_crc(&cmd[..], 2);

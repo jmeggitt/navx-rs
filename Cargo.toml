@@ -9,9 +9,8 @@ byteorder = "1.3"
 crossbeam-channel = "0.3"
 parking_lot = "0.9"
 wpilib = "0.4"
+bitflags = "1.2"
 log = {version = "0.4", features = ["max_level_debug", "release_max_level_warn"]}
-
-# TODO: crc
 
 [package.metadata.frc]
 team-number = 114
