@@ -5,15 +5,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::protocol::{FromBuffer, FromBufferFallible};
 use byteorder::{ByteOrder, LittleEndian};
 use std::f32::consts::PI;
-use std::mem::transmute;
+use std::mem::transmute_copy;
 use std::str::FromStr;
 
 macro_rules! impl_read {
     ($buf:ident -> $ty:ty = $ret:expr) => {
-        impl $ty {
-            pub fn read($buf: &[u8]) -> Self {
+        impl FromBuffer for $ty {
+            fn read($buf: &[u8]) -> Self {
                 $ret
             }
         }
@@ -140,6 +141,12 @@ bitflags! {
     }
 }
 
+impl_read!(buf -> SensorStatus = Self::from_bits_truncate(buf[0]));
+impl_read!(buf -> CalibrationStatus = Self::from_bits_truncate(buf[0]));
+impl_read!(buf -> SelfTestStatus = Self::from_bits_truncate(buf[0]));
+impl_read!(buf -> Capability = Self::from_bits_truncate(buf[0]));
+impl_read!(buf -> ControlReset = Self::from_bits_truncate(buf[0]));
+
 #[repr(u8)]
 pub enum OperationStatus {
     Initializing = 0,
@@ -147,6 +154,15 @@ pub enum OperationStatus {
     Error = 2,
     Calibrating = 3,
     Normal = 4,
+}
+
+impl FromBufferFallible for OperationStatus {
+    fn try_read(buf: &[u8]) -> Option<Self> {
+        match buf[0] {
+            x if x <= 4 => unsafe { Some(transmute_copy(&x)) },
+            _ => None,
+        }
+    }
 }
 
 #[repr(u8)]
@@ -160,15 +176,19 @@ pub enum OmniMountConfig {
     ZDown = 6,
 }
 
-impl_read!(buf -> SensorStatus = Self::from_bits_truncate(buf[0]));
-impl_read!(buf -> CalibrationStatus = Self::from_bits_truncate(buf[0]));
-impl_read!(buf -> SelfTestStatus = Self::from_bits_truncate(buf[0]));
-impl_read!(buf -> Capability = Self::from_bits_truncate(buf[0]));
-impl_read!(buf -> ControlReset = Self::from_bits_truncate(buf[0]));
+impl FromBufferFallible for OmniMountConfig {
+    fn try_read(buf: &[u8]) -> Option<Self> {
+        match buf[0] {
+            x if x <= 6 => unsafe { Some(transmute_copy(&x)) },
+            _ => None,
+        }
+    }
+}
+
 
 // TODO: Use options in return instead of transmutes
-impl_read!(buf -> OperationStatus = unsafe { transmute(buf[0].min(4)) });
-impl_read!(buf -> OmniMountConfig = unsafe { transmute(buf[0].min(6)) });
+//impl_read!(buf -> OperationStatus = unsafe { transmute(buf[0].min(4)) });
+//impl_read!(buf -> OmniMountConfig = unsafe { transmute(buf[0].min(6)) });
 
 /// The stream type used in the stream configuration command
 #[repr(u8)]
@@ -178,8 +198,8 @@ pub enum StreamType {
     Position = b'p',
 }
 
-impl StreamType {
-    pub fn read(buf: &[u8]) -> Option<Self> {
+impl FromBufferFallible for StreamType {
+    fn try_read(buf: &[u8]) -> Option<Self> {
         match buf[0] {
             b'y' => Some(Self::Directional),
             b'g' => Some(Self::RawData),

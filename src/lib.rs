@@ -4,6 +4,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#[forbid(unused_imports)]
+
+// TODO: Completely rewrite this file
+
 #[macro_use]
 extern crate bitflags;
 
@@ -28,6 +32,7 @@ mod register;
 mod registers;
 mod serde;
 mod serial;
+pub mod protocol;
 
 enum IOMessage {
     ZeroYaw,

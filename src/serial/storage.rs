@@ -1,14 +1,15 @@
 use crate::serde::*;
 use std::convert::TryInto;
+use crate::protocol::{FromBuffer, FromBufferFallible};
 
 // TODO: Find a shared place to put Quaternions
 use crate::register::storage::{Addressable, Quaternion};
 
-pub trait ReadPacket: Sized {
-    /// Returns an option because even though packets need to pass a checksum, the parsing still can
-    /// fail because of non-binary types.
-    fn read(buf: &[u8]) -> Option<Self>;
-}
+//pub trait ReadPacket: Sized {
+//    /// Returns an option because even though packets need to pass a checksum, the parsing still can
+//    /// fail because of non-binary types.
+//    fn read(buf: &[u8]) -> Option<Self>;
+//}
 
 /// A directional yaw/pitch/roll/heading update. I decided against using a vector for the
 /// yaw/pitch/roll to preserve the clear naming.
@@ -19,8 +20,8 @@ pub struct DirectionalUpdate {
     pub compass_heading: f32,
 }
 
-impl ReadPacket for DirectionalUpdate {
-    fn read(buf: &[u8]) -> Option<Self> {
+impl FromBufferFallible for DirectionalUpdate {
+    fn try_read(buf: &[u8]) -> Option<Self> {
         Some(Self {
             yaw: read_float(&buf[0..7])?,
             pitch: read_float(&buf[7..14])?,
@@ -43,8 +44,8 @@ pub struct RawDataUpdate {
     pub temperature: f32,
 }
 
-impl ReadPacket for RawDataUpdate {
-    fn read(buf: &[u8]) -> Option<Self> {
+impl FromBufferFallible for RawDataUpdate {
+    fn try_read(buf: &[u8]) -> Option<Self> {
         Some(Self {
             gyro: Vector::read(read_i16, &buf[0..12]),
             acceleration: Vector::read(read_i16, &buf[12..24]),
@@ -61,10 +62,10 @@ pub struct Status {
     pub self_test: SelfTestStatus,
 }
 
-impl ReadPacket for Status {
-    fn read(buf: &[u8]) -> Option<Self> {
+impl FromBufferFallible for Status {
+    fn try_read(buf: &[u8]) -> Option<Self> {
         Some(Self {
-            operation: OperationStatus::read(&buf[0..1]),
+            operation: OperationStatus::try_read(&buf[0..1])?,
             sensor: SensorStatus::read(&buf[1..2]),
             calibration: CalibrationStatus::read(&buf[2..3]),
             self_test: SelfTestStatus::read(&buf[3..4]),
@@ -87,8 +88,8 @@ pub struct PositionUpdate {
     pub status: Status,
 }
 
-impl ReadPacket for PositionUpdate {
-    fn read(buf: &[u8]) -> Option<Self> {
+impl FromBufferFallible for PositionUpdate {
+    fn try_read(buf: &[u8]) -> Option<Self> {
         Some(Self {
             yaw: read_hundredth(&buf[0..2]),
             pitch: read_hundredth(&buf[2..4]),
@@ -101,7 +102,7 @@ impl ReadPacket for PositionUpdate {
             displacement: Vector::read(read_q1616, &buf[32..44]),
             quaternion: Quaternion::read(&buf[44..52]),
             mpu_temp: read_hundredth(&buf[52..54]),
-            status: Status::read(&buf[54..58])?,
+            status: Status::try_read(&buf[54..58])?,
         })
     }
 }
@@ -120,10 +121,10 @@ pub struct StreamConfigurationResponse {
     pub flags: CalibrationStatus,
 }
 
-impl ReadPacket for StreamConfigurationResponse {
-    fn read(buf: &[u8]) -> Option<Self> {
+impl FromBufferFallible for StreamConfigurationResponse {
+    fn try_read(buf: &[u8]) -> Option<Self> {
         Some(Self {
-            stream_type: StreamType::read(&buf[0..1])?,
+            stream_type: StreamType::try_read(&buf[0..1])?,
             gyro_fsr: read_int(&buf[1..5])?,
             accel_fsr: read_int(&buf[5..9])?,
             update_rate: read_int(&buf[9..13])?,

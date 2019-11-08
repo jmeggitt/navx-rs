@@ -12,16 +12,11 @@ use crate::serde::{
     read_radians, read_u16, CalibrationStatus, Capability, OperationStatus, SelfTestStatus,
     SensorStatus,
 };
+use crate::protocol::{FromBuffer, FromBufferFallible};
 
-pub trait Addressable {
+pub trait Addressable: FromBufferFallible {
     const ADDRESS: u8;
     const LEN: u8;
-
-    fn read(buffer: &[u8]) -> Self;
-
-    //    fn request() -> Packet {
-    //        Packet::read(Self::ADDRESS, Self::LEN)
-    //    }
 }
 
 pub struct Identity {
@@ -34,7 +29,9 @@ pub struct Identity {
 impl Addressable for Identity {
     const ADDRESS: u8 = 0x00;
     const LEN: u8 = 4;
+}
 
+impl FromBuffer for Identity {
     fn read(buf: &[u8]) -> Self {
         Self {
             identity: buf[0],
@@ -55,7 +52,9 @@ pub struct Quaternion {
 impl Addressable for Quaternion {
     const ADDRESS: u8 = 0x2A;
     const LEN: u8 = 4;
+}
 
+impl FromBuffer for Quaternion {
     fn read(buf: &[u8]) -> Self {
         Self {
             w: read_radians(&buf[0..2]),
@@ -77,7 +76,9 @@ pub struct Config {
 impl Addressable for Config {
     const ADDRESS: u8 = 0x04;
     const LEN: u8 = 4;
+}
 
+impl FromBuffer for Config {
     fn read(buf: &[u8]) -> Self {
         Self {
             update_rate: buf[0],
@@ -98,15 +99,17 @@ pub struct Status {
 impl Addressable for Status {
     const ADDRESS: u8 = 0x08;
     const LEN: u8 = 9;
+}
 
+impl FromBufferFallible for Status {
     // FIXME: These are not the correct register locations to read
-    fn read(buf: &[u8]) -> Self {
-        Self {
-            operation_status: OperationStatus::read(&buf[0..1]),
+    fn try_read(buf: &[u8]) -> Option<Self> {
+        Some(Self {
+            operation_status: OperationStatus::try_read(&buf[0..1])?,
             calibration_status: CalibrationStatus::read(&buf[1..2]),
             self_test_status: SelfTestStatus::read(&buf[2..3]),
             capabilities: Capability::read(&buf[3..4]),
             sensor_status: SensorStatus::read(&buf[4..9]),
-        }
+        })
     }
 }
