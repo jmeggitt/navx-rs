@@ -59,32 +59,32 @@ pub fn read_u32(buf: &[u8]) -> u32 {
 
 bitflags! {
     pub struct SensorStatus: u8 {
-        const MOVING              = 0b00000001;
-        const YAW_STABLE          = 0b00000010;
-        const MAG_DISTURBANCE     = 0b00000100;
-        const ALTITUDE_VALID      = 0b00001000;
-        const SEALEVEL_PRESS_SET  = 0b00010000;
-        const FUSED_HEADING_VALID = 0b00100000;
+        const MOVING              = 0b0000_0001;
+        const YAW_STABLE          = 0b0000_0010;
+        const MAG_DISTURBANCE     = 0b0000_0100;
+        const ALTITUDE_VALID      = 0b0000_1000;
+        const SEALEVEL_PRESS_SET  = 0b0001_0000;
+        const FUSED_HEADING_VALID = 0b0010_0000;
     }
 }
 
 bitflags! {
     pub struct CalibrationStatus: u8 {
-        const IMU_INPROGRESS = 0b00000000;
-        const IMU_ACCUMULATE = 0b00000001;
-        const IMU_COMPLETE   = 0b00000010;
-        const MAG_COMPLETE   = 0b00000100;
-        const BARO_COMPLETE  = 0b00001000;
+        const IMU_INPROGRESS = 0b0000_0000;
+        const IMU_ACCUMULATE = 0b0000_0001;
+        const IMU_COMPLETE   = 0b0000_0010;
+        const MAG_COMPLETE   = 0b0000_0100;
+        const BARO_COMPLETE  = 0b0000_1000;
     }
 }
 
 bitflags! {
     pub struct SelfTestStatus: u8 {
-        const GYRO_PASSED  = 0b00000001;
-        const ACCEL_PASSED = 0b00000010;
-        const MAG_PASSED   = 0b00000100;
-        const BARO_PASSED  = 0b00001000;
-        const COMPLETE     = 0b10000000;
+        const GYRO_PASSED  = 0b0000_0001;
+        const ACCEL_PASSED = 0b0000_0010;
+        const MAG_PASSED   = 0b0000_0100;
+        const BARO_PASSED  = 0b0000_1000;
+        const COMPLETE     = 0b1000_0000;
     }
 }
 
@@ -92,27 +92,27 @@ bitflags! {
 // equivalent to each other but from different models.
 bitflags! {
     pub struct Capability: u8 {
-        const OMNIMOUNT             = 0b00000100;
-        const OMNIMOUNT_CONFIG_MASK = 0b00111000;
-        const VEL_AND_DISP          = 0b01000000;
-        const VEL_AND_DISP2         = 0b10000000;
+        const OMNIMOUNT             = 0b0000_0100;
+        const OMNIMOUNT_CONFIG_MASK = 0b0011_1000;
+        const VEL_AND_DISP          = 0b0100_0000;
+        const VEL_AND_DISP2         = 0b1000_0000;
     }
 }
 
 bitflags! {
     pub struct ControlReset: u8 {
         // Velocity
-        const VEL_X  = 0b00000001;
-        const VEL_Y  = 0b00000010;
-        const VEL_Z  = 0b00000100;
+        const VEL_X  = 0b0000_0001;
+        const VEL_Y  = 0b0000_0010;
+        const VEL_Z  = 0b0000_0100;
 
         // Displacement
-        const DISP_X = 0b00001000;
-        const DISP_Y = 0b00010000;
-        const DISP_Z = 0b00100000;
+        const DISP_X = 0b0000_1000;
+        const DISP_Y = 0b0001_0000;
+        const DISP_Z = 0b0010_0000;
 
         // Yaw rotation
-        const YAW    = 0b10000000;
+        const YAW    = 0b1000_0000;
 
         // Flags for convenience
         const VEL    = Self::VEL_X.bits | Self::VEL_Y.bits | Self::VEL_Z.bits;
