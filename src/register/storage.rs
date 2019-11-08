@@ -7,8 +7,8 @@
 
 //! All addressable areas of interest in the navX register.
 
-use crate::register::packet::Packet;
-use crate::types::{
+//use crate::register::packet::Packet;
+use crate::serde::{
     read_radians, read_u16, CalibrationStatus, Capability, OperationStatus, SelfTestStatus,
     SensorStatus,
 };
@@ -19,9 +19,9 @@ pub trait Addressable {
 
     fn read(buffer: &[u8]) -> Self;
 
-    fn request() -> Packet {
-        Packet::read(Self::ADDRESS, Self::LEN)
-    }
+    //    fn request() -> Packet {
+    //        Packet::read(Self::ADDRESS, Self::LEN)
+    //    }
 }
 
 pub struct Identity {

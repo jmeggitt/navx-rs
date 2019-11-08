@@ -26,8 +26,8 @@ use ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUp
 mod ahrs;
 mod register;
 mod registers;
+mod serde;
 mod serial;
-mod types;
 
 enum IOMessage {
     ZeroYaw,

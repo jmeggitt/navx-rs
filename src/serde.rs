@@ -4,11 +4,11 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//! TODO: This is overcomplicated. Maybe go back to functions or try implementing some serde stuff.
 
 use byteorder::{ByteOrder, LittleEndian};
 use std::f32::consts::PI;
 use std::mem::transmute;
+use std::str::FromStr;
 
 macro_rules! impl_read {
     ($buf:ident -> $ty:ty = $ret:expr) => {
@@ -55,6 +55,24 @@ pub fn read_q1616(buf: &[u8]) -> f64 {
 
 pub fn read_u32(buf: &[u8]) -> u32 {
     LittleEndian::read_u32(buf)
+}
+
+/// ASCII float (idk why they thought this was a good idea)
+/// Format: [- ][0-9][0-9][0-9].[0-9][0-9]
+pub fn read_float(buf: &[u8]) -> Option<f32> {
+    f32::from_str(std::str::from_utf8(buf).ok()?).ok()
+}
+
+/// ASCII byte as hex (idk why they thought this was a good idea)
+/// Format: [0-9A-F][0-9A-F]
+pub fn read_byte(buf: &[u8]) -> Option<u8> {
+    u8::from_str_radix(std::str::from_utf8(buf).ok()?, 16).ok()
+}
+
+/// ASCII byte as hex (idk why they thought this was a good idea)
+/// Format: [0-9A-F][0-9A-F][0-9A-F][0-9A-F]
+pub fn read_int(buf: &[u8]) -> Option<u16> {
+    u16::from_str_radix(std::str::from_utf8(buf).ok()?, 16).ok()
 }
 
 bitflags! {
@@ -147,8 +165,29 @@ impl_read!(buf -> CalibrationStatus = Self::from_bits_truncate(buf[0]));
 impl_read!(buf -> SelfTestStatus = Self::from_bits_truncate(buf[0]));
 impl_read!(buf -> Capability = Self::from_bits_truncate(buf[0]));
 impl_read!(buf -> ControlReset = Self::from_bits_truncate(buf[0]));
+
+// TODO: Use options in return instead of transmutes
 impl_read!(buf -> OperationStatus = unsafe { transmute(buf[0].min(4)) });
 impl_read!(buf -> OmniMountConfig = unsafe { transmute(buf[0].min(6)) });
+
+/// The stream type used in the stream configuration command
+#[repr(u8)]
+pub enum StreamType {
+    Directional = b'y',
+    RawData = b'g',
+    Position = b'p',
+}
+
+impl StreamType {
+    pub fn read(buf: &[u8]) -> Option<Self> {
+        match buf[0] {
+            b'y' => Some(Self::Directional),
+            b'g' => Some(Self::RawData),
+            b'p' => Some(Self::Position),
+            _ => None,
+        }
+    }
+}
 
 /// A Helper struct representing a vector in 3D space.
 pub struct Vector<T> {

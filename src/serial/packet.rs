@@ -1,4 +1,4 @@
-use std::io::{self, BufRead, BufReader, ErrorKind, Read};
+use std::io::{self, Read};
 
 use memchr::memchr;
 use std::convert::TryFrom;
