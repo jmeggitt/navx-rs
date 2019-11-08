@@ -23,10 +23,10 @@ use wpilib::RobotBase;
 
 use ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
 
-mod address;
 mod ahrs;
+mod register;
 mod registers;
-mod spia;
+mod serial;
 mod types;
 
 enum IOMessage {

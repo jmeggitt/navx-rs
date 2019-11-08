@@ -5,12 +5,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! All addressable areas of interest for the navX register map
+//! All addressable areas of interest in the navX register.
 
-use crate::spia::Packet;
+use crate::register::packet::Packet;
 use crate::types::{
-    CalibrationStatus, Capability, IRadian, OperationStatus, RegType, SelfTestStatus, SensorStatus,
-    U16,
+    read_radians, read_u16, CalibrationStatus, Capability, OperationStatus, SelfTestStatus,
+    SensorStatus,
 };
 
 pub trait Addressable {
@@ -35,12 +35,12 @@ impl Addressable for Identity {
     const ADDRESS: u8 = 0x00;
     const LEN: u8 = 4;
 
-    fn read(buffer: &[u8]) -> Self {
+    fn read(buf: &[u8]) -> Self {
         Self {
-            identity: buffer[0],
-            board_revision: buffer[1],
-            firmware_major_version: buffer[2],
-            firmware_minor_version: buffer[3],
+            identity: buf[0],
+            board_revision: buf[1],
+            firmware_major_version: buf[2],
+            firmware_minor_version: buf[3],
         }
     }
 }
@@ -56,12 +56,12 @@ impl Addressable for Quaternion {
     const ADDRESS: u8 = 0x2A;
     const LEN: u8 = 4;
 
-    fn read(buffer: &[u8]) -> Self {
+    fn read(buf: &[u8]) -> Self {
         Self {
-            w: IRadian::read(&buffer[..]),
-            x: IRadian::read(&buffer[2..]),
-            y: IRadian::read(&buffer[4..]),
-            z: IRadian::read(&buffer[6..]),
+            w: read_radians(&buf[0..2]),
+            x: read_radians(&buf[2..4]),
+            y: read_radians(&buf[4..6]),
+            z: read_radians(&buf[6..8]),
         }
     }
 }
@@ -78,11 +78,11 @@ impl Addressable for Config {
     const ADDRESS: u8 = 0x04;
     const LEN: u8 = 4;
 
-    fn read(buffer: &[u8]) -> Self {
+    fn read(buf: &[u8]) -> Self {
         Self {
-            update_rate: buffer[0],
-            accel_fsr: buffer[1],
-            gyro_fsr: U16::read(&buffer[2..4]),
+            update_rate: buf[0],
+            accel_fsr: buf[1],
+            gyro_fsr: read_u16(&buf[2..4]),
         }
     }
 }
@@ -100,13 +100,13 @@ impl Addressable for Status {
     const LEN: u8 = 9;
 
     // FIXME: These are not the correct register locations to read
-    fn read(buffer: &[u8]) -> Self {
+    fn read(buf: &[u8]) -> Self {
         Self {
-            operation_status: OperationStatus::read(&buffer[..]),
-            calibration_status: CalibrationStatus::read(&buffer[1..]),
-            self_test_status: SelfTestStatus::read(&buffer[2..]),
-            capabilities: Capability::read(&buffer[3..]),
-            sensor_status: SensorStatus::read(&buffer[4..]),
+            operation_status: OperationStatus::read(&buf[0..1]),
+            calibration_status: CalibrationStatus::read(&buf[1..2]),
+            self_test_status: SelfTestStatus::read(&buf[2..3]),
+            capabilities: Capability::read(&buf[3..4]),
+            sensor_status: SensorStatus::read(&buf[4..9]),
         }
     }
 }

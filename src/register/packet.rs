@@ -1,10 +1,9 @@
 /// Message handling for SPI (Maybe scrap?)
 /// TODO: Fix module name (name collision with wpilib::spi and changing this name was way faster than doing it right)
 use crate::registers;
-use std::io::{Read, Write};
 use std::slice::from_raw_parts;
 
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct Packet {
     register: u8,
     value: u8,

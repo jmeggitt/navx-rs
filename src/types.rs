@@ -4,59 +4,58 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//! TODO: This is overcomplicated. Maybe go back to functions or try implementing some serde stuff.
 
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use byteorder::{ByteOrder, LittleEndian};
 use std::f32::consts::PI;
 use std::mem::transmute;
-use std::ops::Deref;
 
-/// A type used in the NavX-MXP registers
-pub trait RegType {
-    /// The size of this type in bytes of the value in the register
-    const SIZE: usize;
-    /// The equivalent rust type this can be parsed to
-    type Output;
-
-    /// Parse the rust type by reading from the given buffer. This assumes that the data is at the
-    /// beginning of the slice and that there are enough bytes within the slice.
-    fn read(buffer: &[u8]) -> Self::Output;
-}
-
-// TODO: Consider replacing RegType impls with macro
-macro_rules! impl_reg {
-    ($T:ty [$size:expr; $O:ty] $buf:ident -> $get:expr) => {
-        impl RegType for $T {
-            const SIZE: usize = $size;
-            type Output = $O;
-
-            fn read($buf: &[u8]) -> $O {
-                $get
+macro_rules! impl_read {
+    ($buf:ident -> $ty:ty = $ret:expr) => {
+        impl $ty {
+            pub fn read($buf: &[u8]) -> Self {
+                $ret
             }
         }
     };
 }
 
-// The base types available to the navX
-pub struct U8;
-pub struct U16;
-pub struct I16;
-pub struct IHundredth;
-pub struct UHundredth;
-pub struct IThousandth;
-pub struct IRadian;
-pub struct Q16;
-pub struct U32;
+// For completeness
+pub fn read_u8(buf: &[u8]) -> u8 {
+    buf[0]
+}
 
-// Implement base types
-impl_reg!(U8 [1; u8] buf -> buf[0]);
-impl_reg!(U16 [2; u16] buf -> LittleEndian::read_u16(buf));
-impl_reg!(I16 [2; i16] buf -> LittleEndian::read_i16(buf));
-impl_reg!(IHundredth [2; f32] buf -> LittleEndian::read_i16(buf) as f32 / 100.0);
-impl_reg!(UHundredth [2; f32] buf -> LittleEndian::read_u16(buf) as f32 / 100.0);
-impl_reg!(IThousandth [2; f32] buf -> LittleEndian::read_i16(buf) as f32 / 1000.0);
-impl_reg!(IRadian [2; f32] buf -> LittleEndian::read_i16(buf) as f32 * PI / 16384.0);
-impl_reg!(Q16 [4; f64] buf -> LittleEndian::read_u32(buf) as f64 / 66536.0);
-impl_reg!(U32 [4; u32] buf -> LittleEndian::read_u32(buf));
+pub fn read_u16(buf: &[u8]) -> u16 {
+    LittleEndian::read_u16(buf)
+}
+
+pub fn read_i16(buf: &[u8]) -> i16 {
+    LittleEndian::read_i16(buf)
+}
+
+pub fn read_hundredth(buf: &[u8]) -> f32 {
+    f32::from(LittleEndian::read_i16(buf)) / 100.0
+}
+
+pub fn read_uhundredth(buf: &[u8]) -> f32 {
+    f32::from(LittleEndian::read_u16(buf)) / 100.0
+}
+
+pub fn read_thousandth(buf: &[u8]) -> f32 {
+    f32::from(LittleEndian::read_i16(buf)) / 1000.0
+}
+
+pub fn read_radians(buf: &[u8]) -> f32 {
+    f32::from(LittleEndian::read_i16(buf)) * PI / 16384.0
+}
+
+pub fn read_q1616(buf: &[u8]) -> f64 {
+    f64::from(LittleEndian::read_u32(buf)) / 66536.0
+}
+
+pub fn read_u32(buf: &[u8]) -> u32 {
+    LittleEndian::read_u32(buf)
+}
 
 bitflags! {
     pub struct SensorStatus: u8 {
@@ -123,13 +122,6 @@ bitflags! {
     }
 }
 
-// Implement RegType for all of the bitflags types
-impl_reg!(SensorStatus [1; Self] buf -> Self::from_bits_truncate(buf[0]));
-impl_reg!(CalibrationStatus [1; Self] buf -> Self::from_bits_truncate(buf[0]));
-impl_reg!(SelfTestStatus [1; Self] buf -> Self::from_bits_truncate(buf[0]));
-impl_reg!(Capability [1; Self] buf -> Self::from_bits_truncate(buf[0]));
-impl_reg!(ControlReset [1; Self] buf -> Self::from_bits_truncate(buf[0]));
-
 #[repr(u8)]
 pub enum OperationStatus {
     Initializing = 0,
@@ -137,16 +129,6 @@ pub enum OperationStatus {
     Error = 2,
     Calibrating = 3,
     Normal = 4,
-}
-
-impl RegType for OperationStatus {
-    const SIZE: usize = 1;
-    type Output = Self;
-
-    fn read(buffer: &[u8]) -> Self::Output {
-        // Clamp to ensure this will always produce a valid status
-        unsafe { transmute(buffer[0].min(4)) }
-    }
 }
 
 #[repr(u8)]
@@ -160,32 +142,28 @@ pub enum OmniMountConfig {
     ZDown = 6,
 }
 
-impl RegType for OmniMountConfig {
-    const SIZE: usize = 1;
-    type Output = Self;
-
-    fn read(buffer: &[u8]) -> Self::Output {
-        // Clamp to ensure this will always produce a valid status
-        unsafe { transmute(buffer[0].min(6)) }
-    }
-}
+impl_read!(buf -> SensorStatus = Self::from_bits_truncate(buf[0]));
+impl_read!(buf -> CalibrationStatus = Self::from_bits_truncate(buf[0]));
+impl_read!(buf -> SelfTestStatus = Self::from_bits_truncate(buf[0]));
+impl_read!(buf -> Capability = Self::from_bits_truncate(buf[0]));
+impl_read!(buf -> ControlReset = Self::from_bits_truncate(buf[0]));
+impl_read!(buf -> OperationStatus = unsafe { transmute(buf[0].min(4)) });
+impl_read!(buf -> OmniMountConfig = unsafe { transmute(buf[0].min(6)) });
 
 /// A Helper struct representing a vector in 3D space.
-pub struct Vector<T: RegType> {
-    pub x: T::Output,
-    pub y: T::Output,
-    pub z: T::Output,
+pub struct Vector<T> {
+    pub x: T,
+    pub y: T,
+    pub z: T,
 }
 
-impl<T: RegType> RegType for Vector<T> {
-    const SIZE: usize = 3 * T::SIZE;
-    type Output = Self;
-
-    fn read(buffer: &[u8]) -> Self::Output {
+impl<T> Vector<T> {
+    pub fn read(read: fn(&[u8]) -> T, buf: &[u8]) -> Self {
+        let segment = buf.len() / 3;
         Self {
-            x: T::read(&buffer[..T::SIZE]),
-            y: T::read(&buffer[T::SIZE..2 * T::SIZE]),
-            z: T::read(&buffer[2 * T::SIZE..]),
+            x: read(&buf[..segment]),
+            y: read(&buf[segment..2 * segment]),
+            z: read(&buf[2 * segment..]),
         }
     }
 }
