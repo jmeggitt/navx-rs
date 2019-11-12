@@ -1,6 +1,6 @@
+use crate::protocol::{FromBuffer, FromBufferFallible};
 use crate::serde::*;
 use std::convert::TryInto;
-use crate::protocol::{FromBuffer, FromBufferFallible};
 
 // TODO: Find a shared place to put Quaternions
 use crate::register::storage::{Addressable, Quaternion};

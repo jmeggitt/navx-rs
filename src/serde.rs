@@ -185,7 +185,6 @@ impl FromBufferFallible for OmniMountConfig {
     }
 }
 
-
 // TODO: Use options in return instead of transmutes
 //impl_read!(buf -> OperationStatus = unsafe { transmute(buf[0].min(4)) });
 //impl_read!(buf -> OmniMountConfig = unsafe { transmute(buf[0].min(6)) });

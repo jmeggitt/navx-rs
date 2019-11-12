@@ -8,11 +8,11 @@
 //! All addressable areas of interest in the navX register.
 
 //use crate::register::packet::Packet;
+use crate::protocol::{FromBuffer, FromBufferFallible};
 use crate::serde::{
     read_radians, read_u16, CalibrationStatus, Capability, OperationStatus, SelfTestStatus,
     SensorStatus,
 };
-use crate::protocol::{FromBuffer, FromBufferFallible};
 
 pub trait Addressable: FromBufferFallible {
     const ADDRESS: u8;

@@ -5,9 +5,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #[forbid(unused_imports)]
-
 // TODO: Completely rewrite this file
-
 #[macro_use]
 extern crate bitflags;
 
@@ -28,11 +26,12 @@ use wpilib::RobotBase;
 use ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
 
 mod ahrs;
-mod register;
+pub mod protocol;
+pub mod register;
 mod registers;
 mod serde;
-mod serial;
-pub mod protocol;
+pub mod serial;
+pub mod watch;
 
 enum IOMessage {
     ZeroYaw,
@@ -80,7 +79,7 @@ impl AHRS {
         }
     }
 
-    //TODO: Figure out what these actually need to do or if they need to be specialized by ioProvider
+    // TODO: Figure out what these actually need to do or if they need to be specialized by ioProvider
     // fn spi_init(&mut self, port: spi::Port, spi_bitrate: u32, update_rate_hz: u8) {
     //     self.common_init(update_rate_hz);
     //     unimplemented!()
@@ -89,9 +88,7 @@ impl AHRS {
     // fn common_init(&mut self, update_rate_hz: u8) {
     //     unimplemented!()
     // }
-}
 
-impl AHRS {
     pub fn from_spi_minutiae(port: spi::Port, spi_bitrate: u32, update_rate_hz: u8) -> Self {
         let u = Arc::new(Mutex::new(AhrsState::default()));
         let u_ = u.clone();
@@ -108,9 +105,7 @@ impl AHRS {
 
         Self {
             io: s,
-            io_thread: Some(thread::spawn(move || {
-                io.run();
-            })),
+            io_thread: Some(thread::spawn(move || io.run())),
             coordinator: StateCoordinator(u),
         }
     }
@@ -145,6 +140,9 @@ pub struct RegisterIO<H: RegisterProtocol> {
 }
 
 impl<H: RegisterProtocol> RegisterIO<H> {
+    const IO_TIMEOUT: Duration = Duration::from_millis(1000);
+    const DELAY_OVERHEAD_MILLISECONDS: f64 = 4.0;
+
     pub(crate) fn new(
         io_provider: H,
         update_rate_hz: u8,
@@ -362,9 +360,6 @@ impl<H: RegisterProtocol> RegisterIO<H> {
             self.update_count += 1;
         }
     }
-
-    const IO_TIMEOUT: Duration = Duration::from_millis(1000);
-    const DELAY_OVERHEAD_MILLISECONDS: f64 = 4.0;
 }
 
 impl<'a, H: RegisterProtocol> IOProvider for RegisterIO<H> {
