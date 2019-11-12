@@ -1,9 +1,10 @@
-use std::io::{self, Read, Write, Error, ErrorKind};
+use std::io::{self, ErrorKind};
+use std::error::Error;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{spawn, JoinHandle};
-use parking_lot::{RwLock, Mutex};
+use parking_lot::{RwLock, Mutex, MutexGuard};
 
 use crate::protocol::Request;
 
@@ -26,7 +27,7 @@ impl<T, S> Watcher<T, S> {
     pub fn new(inner: S) -> Self {
         Self {
             inner: Mutex::new(inner),
-            cache: RwLock::new(Err(Error::new(ErrorKind::Interrupted, "Value has not been read yet"))),
+            cache: RwLock::new(Err(io::Error::new(ErrorKind::Interrupted, "Value has not been read yet"))),
             stop_indicator: AtomicBool::new(false),
         }
     }
@@ -73,20 +74,35 @@ impl<T: 'static + Send, S: 'static + Request<T> + Send> Watched<T, S> {
 
 impl<T: Copy, S> Watched<T, S> {
     pub fn get(&self) -> io::Result<T> {
-        *self.inner.cache.read()
+        match &*self.cache.read() {
+            Ok(x) => Ok(*x),
+            Err(e) => Err(clone_err(e)),
+        }
     }
 }
 
+/// io::Error does not implement Clone (https://github.com/rust-lang/rust/issues/24135) so this work
+/// around is used instead.
+fn clone_err(err: &io::Error) -> io::Error {
+    // Preserve os errors
+    if let Some(os_err) = err.raw_os_error() {
+        return io::Error::from_raw_os_error(os_err)
+    }
+
+    // Custom errors can't be retrieved, so make sure to preserve the debug print
+    io::Error::new(err.kind(), err.description().to_owned())
+}
+
 impl<T, S> Deref for Watched<T, S> {
-    type Target = S;
+    type Target = Arc<Watcher<T, S>>;
 
     fn deref(&self) -> &Self::Target {
-        &self.inner.inner.lock()
+        &self.inner
     }
 }
 
 impl<T, S> DerefMut for Watched<T, S> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner.inner.lock()
+        &mut self.inner
     }
 }
