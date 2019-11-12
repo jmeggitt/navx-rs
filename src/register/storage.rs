@@ -9,14 +9,19 @@
 
 //use crate::register::packet::Packet;
 use crate::protocol::{FromBuffer, FromBufferFallible};
+use crate::register::packet::RegisterPacket;
 use crate::serde::{
     read_radians, read_u16, CalibrationStatus, Capability, OperationStatus, SelfTestStatus,
     SensorStatus,
 };
 
-pub trait Addressable: FromBufferFallible {
+pub trait Addressable: FromBufferFallible + Send {
     const ADDRESS: u8;
-    const LEN: u8;
+    const LEN: usize;
+
+    fn request() -> RegisterPacket {
+        RegisterPacket::new(Self::ADDRESS, Self::LEN as u8)
+    }
 }
 
 pub struct Identity {
@@ -28,7 +33,7 @@ pub struct Identity {
 
 impl Addressable for Identity {
     const ADDRESS: u8 = 0x00;
-    const LEN: u8 = 4;
+    const LEN: usize = 4;
 }
 
 impl FromBuffer for Identity {
@@ -51,7 +56,7 @@ pub struct Quaternion {
 
 impl Addressable for Quaternion {
     const ADDRESS: u8 = 0x2A;
-    const LEN: u8 = 4;
+    const LEN: usize = 4;
 }
 
 impl FromBuffer for Quaternion {
@@ -75,7 +80,7 @@ pub struct Config {
 
 impl Addressable for Config {
     const ADDRESS: u8 = 0x04;
-    const LEN: u8 = 4;
+    const LEN: usize = 4;
 }
 
 impl FromBuffer for Config {
@@ -98,7 +103,7 @@ pub struct Status {
 
 impl Addressable for Status {
     const ADDRESS: u8 = 0x08;
-    const LEN: u8 = 9;
+    const LEN: usize = 9;
 }
 
 impl FromBufferFallible for Status {

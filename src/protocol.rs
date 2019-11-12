@@ -23,7 +23,9 @@ impl<T: FromBuffer> FromBufferFallible for T {
     }
 }
 
+// TODO: Do I need this trait? I could probably get rid of it with very little effort.
 pub trait Packet {
+    fn len(&self) -> usize;
     fn pack<'a>(self) -> &'a [u8];
     fn pack_write<'a>(self) -> &'a [u8];
 }
@@ -49,10 +51,9 @@ impl<IO: BoardIO> DerefMut for NavX<IO> {
     }
 }
 
-///
+/// Storage for the different status flags and capabilities of this board
 pub struct BoardSpec {}
 
-/// Altitude/Heading Positioning System
 pub trait BoardIO {
     type PacketType: Packet;
 
@@ -60,39 +61,6 @@ pub trait BoardIO {
 
     // Basic shared traits between registerIO and serialIO
 }
-
-pub struct RegisterIO<T> {
-    inner: T,
-}
-
-impl<T> Deref for RegisterIO<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<T> DerefMut for RegisterIO<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
-}
-
-impl<T: Read + Write> RegisterIO<T> {
-    pub fn new(inner: T) -> Self {
-        Self { inner }
-    }
-
-    //    fn write(&mut self, packet: Packet) -> io::Result<bool> {
-    //        let request = packet.pack_write();
-    //        self.inner.write()
-    //    }
-}
-
-//impl<T> BoardIO for RegisterIO<T> {
-//
-//}
 
 pub struct SerialIO<T> {
     inner: T,

@@ -1,3 +1,4 @@
+use parking_lot::{Mutex, RwLock};
 use std::error::Error;
 use std::io::{self, ErrorKind};
 use std::ops::{Deref, DerefMut};
@@ -5,15 +6,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::{spawn, JoinHandle};
 
-// Parking lot is faster, but std allows values to be taken out
 use crate::protocol::Request;
-use parking_lot::{Mutex, RwLock};
 
-pub trait Watch {
-    type Out;
+/// Trait to request that a value be watched.
+pub trait Watch<T> {
+    /// The type that provides the values to cache
+    type Provider: Request<T>;
 
-    /// Setup a Watcher using self as the data provider.
-    fn watch<T>(self) -> Self::Out;
+    /// Setup a Watcher using self as the data provider. This will start a thread to monitor its
+    /// progress.
+    fn watch(self) -> Watched<T, Self::Provider>;
 }
 
 pub struct Watcher<T, S> {
@@ -61,6 +63,7 @@ impl<T: 'static + Send, S: 'static + Request<T> + Send> Watcher<T, S> {
     }
 }
 
+/// A utility struct to watch a value collected by the NavX.
 pub struct Watched<T, S> {
     inner: Arc<Watcher<T, S>>,
     join_handle: JoinHandle<()>,

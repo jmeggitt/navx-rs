@@ -223,10 +223,10 @@ const CRC7_POLY: u8 = 0x91;
 
 /// I was unable to get the same results with any crc library. The navx chip may not use a standard
 /// crc7 implementation.
-pub fn get_crc(message: &[u8], length: u8) -> u8 {
+pub fn get_crc(message: &[u8], length: usize) -> u8 {
     let mut crc = 0;
 
-    for i in 0..length {
+    for i in 0..length as u8 {
         crc ^= message[i as usize];
         for _ in 0..8 {
             if crc & 1 != 0 {

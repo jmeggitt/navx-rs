@@ -42,6 +42,11 @@ impl RegisterPacket {
 }
 
 impl Packet for RegisterPacket {
+    /// Register packets will always be 3 long
+    fn len(&self) -> usize {
+        3
+    }
+
     fn pack<'a>(mut self) -> &'a [u8] {
         self.apply_checksum();
 

@@ -502,7 +502,7 @@ impl RegisterProtocol for Mutex<RegisterIOSPI> {
             trace!("navX-MXP SPI Read error\n");
             return false; // READ ERROR
         }
-        let crc = registers::get_crc(&spi.rx_buf[..], buf.len() as u8);
+        let crc = registers::get_crc(&spi.rx_buf[..], buf.len());
         if crc != spi.rx_buf[buf.len()] {
             trace!(
                 "navX-MXP SPI CRC err: Length: {}, Got: {}; Calculated: {}\n",
