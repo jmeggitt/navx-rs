@@ -1,8 +1,8 @@
 //! Handle switching between register and serial protocol
 use std::io::{self, Read, Write};
 use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use std::thread::{spawn, JoinHandle};
 
 use parking_lot::RwLock;
