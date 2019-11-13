@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::{spawn, JoinHandle};
 
-use crate::protocol::Request;
+use crate::Request;
 
 /// Trait to request that a value be watched.
 pub trait Watch<T> {

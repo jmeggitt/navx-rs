@@ -5,12 +5,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::protocol::{FromBuffer, FromBufferFallible};
+use crate::{FromBuffer, FromBufferFallible};
 use byteorder::{ByteOrder, LittleEndian};
 use std::f32::consts::PI;
 use std::mem::transmute_copy;
 use std::str::FromStr;
-
 
 /*******************************************************************/
 /*                      Register Definitions                       */
@@ -28,7 +27,6 @@ use std::str::FromStr;
 /*        16:16:           -32768.9999 - 32767.9999 (32 bits)      */
 /*        unsigned long:             0 - 4294967295 (32 bits)      */
 /*******************************************************************/
-
 
 macro_rules! impl_read {
     ($buf:ident -> $ty:ty = $ret:expr) => {

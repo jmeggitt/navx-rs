@@ -1,5 +1,5 @@
-use crate::protocol::{FromBuffer, FromBufferFallible};
 use crate::serde::*;
+use crate::{FromBuffer, FromBufferFallible};
 use std::convert::TryInto;
 
 // TODO: Find a shared place to put Quaternions

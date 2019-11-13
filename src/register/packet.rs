@@ -1,6 +1,6 @@
 use std::slice::from_raw_parts;
 
-use crate::protocol::{Packet, get_crc};
+use crate::{get_crc, Packet};
 
 /// A packet to be sent to the NavX. Every packet is exactly three bytes long and can be broken into
 /// four sections. NavX provided register mappings:

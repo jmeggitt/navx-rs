@@ -2,9 +2,9 @@
 use std::io::{self, ErrorKind, Read, Write};
 use std::ops::{Deref, DerefMut};
 
-use crate::protocol::{Packet, Request, get_crc};
 use crate::register::storage::Addressable;
 use crate::watch::{Watch, Watched};
+use crate::{get_crc, Packet, Request};
 
 pub mod packet;
 pub mod storage;
