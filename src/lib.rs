@@ -4,7 +4,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#[forbid(unused_imports)]
+#![forbid(unused_imports)]
 // TODO: Completely rewrite this file
 #[macro_use]
 extern crate bitflags;
@@ -25,13 +25,16 @@ use wpilib::RobotBase;
 
 use ahrs::{AHRSPosUpdate, AHRSUpdate, AHRSUpdateBase, BoardID, GyroUpdate, YPRUpdate};
 
-mod ahrs;
 pub mod protocol;
 pub mod register;
-mod registers;
-mod serde;
+pub mod serde;
 pub mod serial;
 pub mod watch;
+
+// Deprecated stuff
+mod ahrs;
+mod registers;
+
 
 enum IOMessage {
     ZeroYaw,
@@ -477,7 +480,7 @@ impl RegisterProtocol for Mutex<RegisterIOSPI> {
 
         cmd[0] = address | 0x80;
         cmd[1] = value;
-        cmd[2] = registers::get_crc(&cmd[..], 2);
+        cmd[2] = protocol::get_crc(&cmd[..], 2);
         if self.lock().port.write(&cmd[..]) as usize != size_of_val(&cmd) {
             trace!("navX-MXP SPI Write error\n");
             return false;
@@ -491,7 +494,7 @@ impl RegisterProtocol for Mutex<RegisterIOSPI> {
         let mut cmd = [0u8; 3];
         cmd[0] = first_address;
         cmd[1] = buf.len() as u8;
-        cmd[2] = registers::get_crc(&cmd[..], 2);
+        cmd[2] = protocol::get_crc(&cmd[..], 2);
         if spi.port.write(&cmd[..]) as usize != size_of_val(&cmd) {
             return false; // WRITE ERROR
         }
@@ -502,7 +505,7 @@ impl RegisterProtocol for Mutex<RegisterIOSPI> {
             trace!("navX-MXP SPI Read error\n");
             return false; // READ ERROR
         }
-        let crc = registers::get_crc(&spi.rx_buf[..], buf.len());
+        let crc = protocol::get_crc(&spi.rx_buf[..], buf.len());
         if crc != spi.rx_buf[buf.len()] {
             trace!(
                 "navX-MXP SPI CRC err: Length: {}, Got: {}; Calculated: {}\n",

@@ -1,8 +1,6 @@
-use crate::protocol::Packet;
-/// Message handling for SPI (Maybe scrap?)
-/// TODO: Fix module name (name collision with wpilib::spi and changing this name was way faster than doing it right)
-use crate::registers;
 use std::slice::from_raw_parts;
+
+use crate::protocol::{Packet, get_crc};
 
 /// A packet to be sent to the NavX. Every packet is exactly three bytes long and can be broken into
 /// four sections. NavX provided register mappings:
@@ -36,7 +34,7 @@ impl RegisterPacket {
     fn apply_checksum(&mut self) {
         unsafe {
             let ptr = &self as *const _ as *const u8;
-            self.checksum = registers::get_crc(from_raw_parts(ptr, 2), 2);
+            self.checksum = get_crc(from_raw_parts(ptr, 2), 2);
         }
     }
 }

@@ -2,9 +2,8 @@
 use std::io::{self, ErrorKind, Read, Write};
 use std::ops::{Deref, DerefMut};
 
-use crate::protocol::{Packet, Request};
+use crate::protocol::{Packet, Request, get_crc};
 use crate::register::storage::Addressable;
-use crate::registers::get_crc;
 use crate::watch::{Watch, Watched};
 
 pub mod packet;
@@ -35,6 +34,7 @@ impl<T: Write> RegisterIO<T> {
     }
 }
 
+// TODO: Will this approach to reading also work for serial inputs
 impl<T: Read + Write, V: Addressable> Request<V> for RegisterIO<T> {
     fn read(&mut self) -> io::Result<V> {
         self.write(V::request())?;

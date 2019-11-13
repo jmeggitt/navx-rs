@@ -1,11 +1,8 @@
 //! Handle switching between register and serial protocol
-use std::io::{self, Read, Write};
+use std::io;
 use std::ops::{Deref, DerefMut};
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
-use std::thread::{spawn, JoinHandle};
-
-use parking_lot::RwLock;
+use crate::register::RegisterIO;
+use wpilib::spi::Spi;
 
 //use crate::register::packet::Packet;
 
@@ -30,22 +27,41 @@ pub trait Packet {
     fn pack_write<'a>(self) -> &'a [u8];
 }
 
+
 /// The handle you hold to get information from the navX
 /// Maybe deref into its inner Register/Serial system?
-pub struct NavX<IO: BoardIO> {
-    inner: IO,
+pub struct NavX<T> {
+    inner: T,
     spec: BoardSpec,
 }
 
-impl<IO: BoardIO> Deref for NavX<IO> {
-    type Target = IO;
+impl<T> NavX<T> {
+    /// Retrieve board specs
+    pub fn init(io: T) -> Self {
+        unimplemented!()
+    }
+
+    pub fn new_spi(mut port: Spi) -> Self {
+        const DEFAULT_BITRATE: u32 = 500000; // TODO: Find correct rate
+
+        port.set_clock_rate(f64::from(DEFAULT_BITRATE));
+        port.set_msb_first();
+        port.set_sample_data_on_trailing_edge();
+        port.set_clock_active_low();
+
+        Self::init(RegisterIO::new(port))
+    }
+}
+
+impl<T> Deref for NavX<T> {
+    type Target = T;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<IO: BoardIO> DerefMut for NavX<IO> {
+impl<T> DerefMut for NavX<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
@@ -54,14 +70,16 @@ impl<IO: BoardIO> DerefMut for NavX<IO> {
 /// Storage for the different status flags and capabilities of this board
 pub struct BoardSpec {}
 
-pub trait BoardIO {
-    type PacketType: Packet;
+// TODO: Replace with alternate trait that works better
+//pub trait BoardIO {
+//    type PacketType: Packet;
+//
+//    fn write(&mut self, packet: Self::PacketType) -> io::Result<()>;
+//
+//    // Basic shared traits between registerIO and serialIO
+//}
 
-    fn write(&mut self, packet: Self::PacketType) -> io::Result<()>;
-
-    // Basic shared traits between registerIO and serialIO
-}
-
+// TODO: Move to serial module
 pub struct SerialIO<T> {
     inner: T,
 }
@@ -74,3 +92,24 @@ pub trait Request<T> {
     /// Request to read a value. This operation is blocking!
     fn read(&mut self) -> io::Result<T>;
 }
+
+
+const CRC7_POLY: u8 = 0x91;
+
+/// I was unable to get the same results with any crc library. The navx chip may not use a standard
+/// crc7 implementation.
+pub fn get_crc(message: &[u8], length: usize) -> u8 {
+    let mut crc = 0;
+
+    for i in 0..length as u8 {
+        crc ^= message[i as usize];
+        for _ in 0..8 {
+            if crc & 1 != 0 {
+                crc ^= CRC7_POLY;
+            }
+            crc >>= 1;
+        }
+    }
+    crc
+}
+

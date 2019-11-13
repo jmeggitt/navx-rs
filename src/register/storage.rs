@@ -24,6 +24,7 @@ pub trait Addressable: FromBufferFallible + Send {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Identity {
     pub identity: u8,
     pub board_revision: u8,
@@ -47,6 +48,7 @@ impl FromBuffer for Identity {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Quaternion {
     pub w: f32,
     pub x: f32,
@@ -72,6 +74,7 @@ impl FromBuffer for Quaternion {
 
 /// Configuration and limits of board. The units for the following fields are update_rate (Hz),
 /// accel_fsr (Degrees/sec), and gyro_fsr (G).
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Config {
     pub update_rate: u8,
     pub accel_fsr: u8,
@@ -93,6 +96,7 @@ impl FromBuffer for Config {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Status {
     pub operation_status: OperationStatus,
     pub calibration_status: CalibrationStatus,

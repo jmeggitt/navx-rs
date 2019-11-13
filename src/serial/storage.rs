@@ -3,13 +3,7 @@ use crate::serde::*;
 use std::convert::TryInto;
 
 // TODO: Find a shared place to put Quaternions
-use crate::register::storage::{Addressable, Quaternion};
-
-//pub trait ReadPacket: Sized {
-//    /// Returns an option because even though packets need to pass a checksum, the parsing still can
-//    /// fail because of non-binary types.
-//    fn read(buf: &[u8]) -> Option<Self>;
-//}
+use crate::register::storage::Quaternion;
 
 /// A directional yaw/pitch/roll/heading update. I decided against using a vector for the
 /// yaw/pitch/roll to preserve the clear naming.

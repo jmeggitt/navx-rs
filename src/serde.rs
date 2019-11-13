@@ -11,6 +11,25 @@ use std::f32::consts::PI;
 use std::mem::transmute_copy;
 use std::str::FromStr;
 
+
+/*******************************************************************/
+/*                      Register Definitions                       */
+/*******************************************************************/
+/* NOTE:  All multi-byte registers are in little-endian format.    */
+/*        All registers with 'signed' data are twos-complement.    */
+/*        Data Type Summary:                                       */
+/*        unsigned byte:           0   - 255    (8 bits)           */
+/*        unsigned short:          0   - 65535  (16 bits)          */
+/*        signed short:        -32768  - 32767  (16 bits)          */
+/*        signed hundredeths:  -327.68 - 327.67 (16 bits)		   */
+/*        unsigned hundredths:    0.0  - 655.35 (16 bits)          */
+/*        signed thousandths:  -32.768 - 32.767 (16 bits)          */
+/*        signed short ratio: -1/16384 - 1/16384 (16 bits)         */
+/*        16:16:           -32768.9999 - 32767.9999 (32 bits)      */
+/*        unsigned long:             0 - 4294967295 (32 bits)      */
+/*******************************************************************/
+
+
 macro_rules! impl_read {
     ($buf:ident -> $ty:ty = $ret:expr) => {
         impl FromBuffer for $ty {
@@ -21,7 +40,7 @@ macro_rules! impl_read {
     };
 }
 
-// For completeness
+// TODO: Remove?
 pub fn read_u8(buf: &[u8]) -> u8 {
     buf[0]
 }
@@ -148,6 +167,7 @@ impl_read!(buf -> Capability = Self::from_bits_truncate(buf[0]));
 impl_read!(buf -> ControlReset = Self::from_bits_truncate(buf[0]));
 
 #[repr(u8)]
+#[derive(Copy, Clone, Debug)]
 pub enum OperationStatus {
     Initializing = 0,
     RunningSelfTest = 1,
@@ -166,6 +186,7 @@ impl FromBufferFallible for OperationStatus {
 }
 
 #[repr(u8)]
+#[derive(Copy, Clone, Debug)]
 pub enum OmniMountConfig {
     Default = 0,
     XUp = 1,
@@ -185,12 +206,9 @@ impl FromBufferFallible for OmniMountConfig {
     }
 }
 
-// TODO: Use options in return instead of transmutes
-//impl_read!(buf -> OperationStatus = unsafe { transmute(buf[0].min(4)) });
-//impl_read!(buf -> OmniMountConfig = unsafe { transmute(buf[0].min(6)) });
-
 /// The stream type used in the stream configuration command
 #[repr(u8)]
+#[derive(Copy, Clone, Debug)]
 pub enum StreamType {
     Directional = b'y',
     RawData = b'g',
@@ -209,6 +227,7 @@ impl FromBufferFallible for StreamType {
 }
 
 /// A Helper struct representing a vector in 3D space.
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Vector<T> {
     pub x: T,
     pub y: T,

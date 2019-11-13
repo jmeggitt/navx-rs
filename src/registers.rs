@@ -1,27 +1,11 @@
+/// TODO: This file is deprecated
+
 // Copyright 2018 navx-rs Developers.
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-/*******************************************************************/
-/*******************************************************************/
-/*                      Register Definitions                       */
-/*******************************************************************/
-/* NOTE:  All multi-byte registers are in little-endian format.    */
-/*        All registers with 'signed' data are twos-complement.    */
-/*        Data Type Summary:                                       */
-/*        unsigned byte:           0   - 255    (8 bits)           */
-/*        unsigned short:          0   - 65535  (16 bits)          */
-/*        signed short:        -32768  - 32767  (16 bits)          */
-/*        signed hundredeths:  -327.68 - 327.67 (16 bits)		   */
-/*        unsigned hundredths:    0.0  - 655.35 (16 bits)          */
-/*        signed thousandths:  -32.768 - 32.767 (16 bits)          */
-/*        signed short ratio: -1/16384 - 1/16384 (16 bits)         */
-/*        16:16:           -32768.9999 - 32767.9999 (32 bits)      */
-/*        unsigned long:             0 - 4294967295 (32 bits)      */
-/*******************************************************************/
 
 /**********************************************/
 /* Device Identification Registers            */
@@ -217,23 +201,4 @@ pub fn dec_1616_float(b: &[u8]) -> f32 {
     let mut result = dec_prot_i32(b) as f32;
     result /= 65536.;
     result
-}
-
-const CRC7_POLY: u8 = 0x91;
-
-/// I was unable to get the same results with any crc library. The navx chip may not use a standard
-/// crc7 implementation.
-pub fn get_crc(message: &[u8], length: usize) -> u8 {
-    let mut crc = 0;
-
-    for i in 0..length as u8 {
-        crc ^= message[i as usize];
-        for _ in 0..8 {
-            if crc & 1 != 0 {
-                crc ^= CRC7_POLY;
-            }
-            crc >>= 1;
-        }
-    }
-    crc
 }
